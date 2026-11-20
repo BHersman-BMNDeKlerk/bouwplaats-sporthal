@@ -28,6 +28,8 @@ export interface LayerState {
   routes: boolean;
   routeSporen: boolean;
   routeDebug: boolean;
+  /** Fase 5 */
+  kranen: boolean;
   /** Fase 2 */
   eigenPerceel: boolean;
   grens: boolean;
@@ -87,6 +89,7 @@ export function defaultLayers(): LayerState {
     routes: true,
     routeSporen: true,
     routeDebug: false,
+    kranen: true,
     ontwerp: true,
     ontwerpContour: true,
     ontwerpTransparant: false,

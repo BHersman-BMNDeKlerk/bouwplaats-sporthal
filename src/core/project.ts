@@ -11,6 +11,7 @@ import type { KlicData } from '../data/klic';
 import type { Gate } from './polyline';
 import type { Element } from './elements';
 import type { Route } from '../vehicles/routes';
+import type { Crane } from '../cranes/cranes';
 
 export interface TreeOverride {
   hoogte?: number;
@@ -124,7 +125,8 @@ export interface ProjectData {
   elementen: Element[];
   /** Fase 4: voertuigroutes (swept path). */
   routes: Route[];
-  kranen?: unknown[];
+  /** Fase 5: kraanopstellingen. */
+  kranen: Crane[];
 }
 
 export function emptyProject(naam: string): ProjectData {
@@ -169,7 +171,7 @@ export function parseProject(text: string): ProjectData {
   for (const r of [...p.klic, ...p.onderleggers]) if (!p.bijlagen[r.id]) throw new Error(`Projectbestand onvolledig: gegevens van "${'meldnummer' in r ? r.meldnummer : r.naam}" ontbreken.`);
   p.elementen = Array.isArray(d.elementen) ? d.elementen.filter((e: any) => e && e.type && Number.isFinite(e.x) && Number.isFinite(e.y)) : [];
   p.routes = Array.isArray(d.routes) ? d.routes.filter((r: any) => r && r.voertuig && Array.isArray(r.legs)) : [];
-  p.kranen = d.kranen ?? [];
+  p.kranen = Array.isArray(d.kranen) ? d.kranen.filter((k: any) => k && (k.type === 'toren' || k.type === 'mobiel') && Number.isFinite(k.x) && Number.isFinite(k.y)) : [];
   p.opgeslagen = d.opgeslagen;
   return p;
 }

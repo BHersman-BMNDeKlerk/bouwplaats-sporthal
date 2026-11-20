@@ -460,7 +460,7 @@ export class TerrainLayer {
     }
     for (const o of this.overlays) {
       ctx.save();
-      o({ ctx, bb, ppm, X, Y, ring, path, label }, L);
+      try { o({ ctx, bb, ppm, X, Y, ring, path, label }, L); } catch (e) { console.error('Fout in kaartlaag:', e); }
       ctx.restore();
     }
     if (plan || (L.percelen && L.perceelnummers)) {

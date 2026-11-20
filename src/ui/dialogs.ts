@@ -98,6 +98,17 @@ export function helpContent(): Node {
       een opgegeven draaicirkel (stoep-stoep) van de fabrikant gaat voor de maximale stuurhoek.</li>
     <li><b>Indicatief</b> – geen vervanging van gecertificeerde software zoals AutoTURN.</li>
   </ul>
+  <h3>Kranen (menu 🏗 Kraan)</h3>
+  <ul>
+    <li><b>Torenkraan</b> of <b>mobiele kraan</b> plaatsen: klik het hart van de kraan op de kaart. In het paneel stel je haakhoogte,
+      giek, contragiek, voet, stempelbasis, giekhoek enz. in, en plak je de <b>lasttabel</b> (per regel: radius; last in t).</li>
+    <li>Getoond: zwenkcirkel van giek en contragiek (of staart), draagvermogen-ringen met de max. last, stempelplaten en werkgebied.</li>
+    <li>Controles: overdraai over de perceelgrens (ingemeten grens heeft voorrang), openbare weg en buurpanden; hoogteconflict met
+      gebouwen, het nieuwe pand, eigen elementen en bomen; overlappende zwenkgebieden van meerdere kranen.</li>
+    <li><b>Kan last X op positie Y?</b> Vul de last in, klik een punt: OK of NIET OK op basis van radius en lasttabel (lineair
+      geïnterpoleerd, buiten de tabel altijd NIET OK – er wordt nooit geëxtrapoleerd). Esc stopt.</li>
+    <li>De meegeleverde lasttabellen zijn voorbeelden: gebruik altijd de tabel van de fabrikant voor de gekozen configuratie.</li>
+  </ul>
   <h3>Meten en maatlijnen</h3>
   <p><b>📏 Meten</b> (<kbd>M</kbd>): klik punten op de kaart of op gebouwen. Per stuk zie je de horizontale afstand, het
   hoogteverschil (ΔH) en de 3D-afstand, plus het totaal. Punten springen naar hoeken van gebouwen, het nieuwe pand,

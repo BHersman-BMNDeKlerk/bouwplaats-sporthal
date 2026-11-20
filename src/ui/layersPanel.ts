@@ -40,6 +40,10 @@ export interface LayersPanelOpts {
   routeStatus: (r: Route) => { ok: boolean; botsingen: number };
   onSelectRoute: (id: string) => void;
   onRouteVisible: (id: string, v: boolean) => void;
+  /** Fase 5 */
+  craneStatus: (id: string) => { conflicts: number; letop: number };
+  onSelectCrane: (id: string) => void;
+  onCraneVisible: (id: string, v: boolean) => void;
   onOpen: (what: { kind: 'klicRef' | 'dxf'; id: string } | { kind: 'grens' } | { kind: 'codes' }) => void;
 }
 
@@ -169,6 +173,19 @@ export function renderLayersPanel(o: LayersPanelOpts) {
       root.append(h('div', { class: 'lrow sub' }, cb,
         h('a', { href: '#', onclick: (ev: Event) => { ev.preventDefault(); o.onSelectRoute(r.id); } }, r.naam),
         h('span', { style: { color: !st.ok || st.botsingen ? '#b71c1c' : '#1b5e20', fontSize: '12px' } }, !st.ok ? '✖ niet uitvoerbaar' : st.botsingen ? `⚠ ${st.botsingen}` : '✔')));
+    }
+  }
+
+  // --- Kranen (fase 5)
+  if (o.project.kranen.length) {
+    root.append(h('h2', {}, 'Kranen'));
+    root.append(check('Kranen tonen', () => L.kranen, (v) => (L.kranen = v), 'all'));
+    for (const k of o.project.kranen) {
+      const st = o.craneStatus(k.id);
+      const cb = h('input', { type: 'checkbox', checked: k.zichtbaar, onchange: () => o.onCraneVisible(k.id, cb.checked) }) as HTMLInputElement;
+      root.append(h('div', { class: 'lrow sub' }, cb,
+        h('a', { href: '#', onclick: (ev: Event) => { ev.preventDefault(); o.onSelectCrane(k.id); } }, k.naam),
+        h('span', { style: { color: st.conflicts ? '#b71c1c' : st.letop ? '#b45309' : '#1b5e20', fontSize: '12px' } }, st.conflicts ? `⚠ ${st.conflicts} conflict` : st.letop ? `${st.letop}× let op` : '✔')));
     }
   }
 
