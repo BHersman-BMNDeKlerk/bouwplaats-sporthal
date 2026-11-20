@@ -7,6 +7,7 @@ import { PUNT_SOORTEN } from '../data/csvPoints';
 import { triangulate3D } from '../data/geom';
 import { GRENS_KLEUR, INGEKORT_KLEUR, MANUAL_STYLE, POORT_KLEUR, soortVan } from './overlays';
 import { BOUWHEK, gatePanels, panels } from '../core/polyline';
+import { offsetSegment } from '../core/measure';
 
 const fmt = (v: number) => v.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -65,7 +66,9 @@ export class UserLayer {
     grp.userData = { kind: 'manual', id: o.id };
     const mat = new THREE.MeshLambertMaterial({ color: col });
     const pts = o.coords;
-    if (o.soort === 'paaltjes') {
+    if (o.soort === 'maatlijn') {
+      this.addDimension(o, sel, grp);
+    } else if (o.soort === 'paaltjes') {
       const h = o.hoogte ?? 0.9;
       for (const [x, y] of pts) {
         const m = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, h, 10), mat);
@@ -117,6 +120,36 @@ export class UserLayer {
       grp.add(lab);
     }
     if (grp.children.length) this.group.add(grp);
+  }
+
+  /** Maatlijn zoals op tekening (hulplijnen, schuine streepjes, maat), bovenop alles getekend. */
+  private addDimension(o: ManualObject, sel: boolean, grp: THREE.Group) {
+    const col = sel ? '#f9a825' : MANUAL_STYLE.maatlijn.kleur;
+    const off = o.offset ?? 0;
+    const pos: THREE.Vector3[] = [];
+    const seg = (p: number[], q: number[]) => pos.push(this.L(p[0], p[1], 0.15), this.L(q[0], q[1], 0.15));
+    const pts = o.coords;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (len < 0.01) continue;
+      const [a2, b2] = offsetSegment(a, b, off);
+      const ux = (b[0] - a[0]) / len, uy = (b[1] - a[1]) / len;
+      const sg = Math.sign(off || 1), nx = -uy * sg, ny = ux * sg;
+      if (Math.abs(off) > 0.05)
+        for (const [p, q] of [[a, a2], [b, b2]]) seg([p[0] + nx * 0.2, p[1] + ny * 0.2], [q[0] + nx * 0.3, q[1] + ny * 0.3]);
+      seg(a2, b2);
+      const t = 0.35;
+      for (const q of [a2, b2]) seg([q[0] - (ux + nx) * t, q[1] - (uy + ny) * t], [q[0] + (ux + nx) * t, q[1] + (uy + ny) * t]);
+      const lab = labelSprite(len.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), col, 0.9);
+      const side = off >= 0 ? 1 : -1;
+      lab.position.copy(this.L((a2[0] + b2[0]) / 2 - uy * 0.6 * side, (a2[1] + b2[1]) / 2 + ux * 0.6 * side, 0.6));
+      grp.add(lab);
+    }
+    const ls = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pos), new THREE.LineBasicMaterial({ color: col, depthTest: false }));
+    ls.renderOrder = 35;
+    ls.raycast = () => {};
+    grp.add(ls);
   }
 
   /** Bouwhekken van 3,50 × 2,00 m: gaasveld met frame, betonvoeten en poortvleugels. */

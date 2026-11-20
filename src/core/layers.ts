@@ -71,7 +71,7 @@ export function defaultLayers(): LayerState {
     klicMaatvoering: false,
     klicPunten: true,
     klicGraafpolygoon: true,
-    handmatig: { doorrijhoogte: true, paaltjes: true, hekwerk: true, nietBerijdbaar: true },
+    handmatig: { doorrijhoogte: true, paaltjes: true, hekwerk: true, nietBerijdbaar: true, maatlijn: true },
     ontwerp: true,
     ontwerpContour: true,
     ontwerpTransparant: false,

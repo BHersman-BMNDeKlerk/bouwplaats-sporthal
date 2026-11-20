@@ -19,6 +19,7 @@ import type { DxfData } from '../data/dxf';
 import { MANUAL_STYLE, soortVan } from '../scene/overlays';
 import { polylineLength, activeBoundary, type ActiveBoundary } from '../core/boundary';
 import { ringArea } from '../data/geom';
+import { measureTotals, type MeasurePoint } from '../core/measure';
 import { BOUWHEK, clampGate, panels, totalLength, wholePanels, type Pt } from '../core/polyline';
 
 export class InfoPanel {
@@ -355,6 +356,7 @@ export class InfoPanel {
     const needsH = o.soort === 'paaltjes';
     const iH = h('input', { type: 'text', inputmode: 'decimal', value: String((o.soort === 'doorrijhoogte' ? o.vrijeHoogte : o.hoogte) ?? '').replace('.', ',') });
     const iNote = h('input', { type: 'text', value: o.opmerking ?? '', placeholder: 'opmerking' });
+    const iOff = h('input', { type: 'text', inputmode: 'decimal', value: String(o.offset ?? 0).replace('.', ',') });
     const save = () => {
       const v = parseNum(iH.value);
       if ((o.soort === 'doorrijhoogte' || needsH) && (v == null || Number.isNaN(v) || v <= 0)) { alert('Vul een geldige hoogte in (m).'); return; }
@@ -363,16 +365,19 @@ export class InfoPanel {
         if (!x) return;
         x.naam = iNaam.value.trim();
         x.opmerking = iNote.value.trim() || undefined;
+        if (o.soort === 'maatlijn') { const off = parseNum(iOff.value); if (off != null && !Number.isNaN(off)) x.offset = off; }
         if (o.soort === 'doorrijhoogte') x.vrijeHoogte = v!;
         else if (needsH) x.hoogte = v!;
       });
     };
-    for (const i of [iNaam, iH, iNote]) i.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') save(); ev.stopPropagation(); });
+    for (const i of [iNaam, iH, iNote, iOff]) i.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') save(); ev.stopPropagation(); });
     const len = o.geom !== 'punten' ? polylineLength(o.geom === 'vlak' ? [...o.coords, o.coords[0]] : o.coords) : 0;
     this.open(st.label, `Eigen obstakel · ${o.geom === 'punten' ? `${o.coords.length} punt(en)` : o.geom === 'lijn' ? `lijn ${len.toLocaleString('nl-NL', { maximumFractionDigits: 2 })} m` : `vlak ${ringArea([...o.coords, o.coords[0]]).toLocaleString('nl-NL', { maximumFractionDigits: 1 })} m²`}`,
       h('fieldset', {},
         h('legend', {}, 'Eigenschappen'),
         h('div', { class: 'frow' }, 'Naam', iNaam),
+        o.soort === 'maatlijn' ? h('div', { class: 'frow' }, 'Afstand maatlijn tot punten (m)', iOff) : null,
+        o.soort === 'maatlijn' ? h('div', { class: 'hint', style: { fontSize: '11px', color: '#777' } }, 'Positief = links van de tekenrichting, negatief = rechts.') : null,
         o.soort === 'doorrijhoogte' || o.soort === 'paaltjes' ? h('div', { class: 'frow' }, o.soort === 'doorrijhoogte' ? 'Vrije hoogte boven maaiveld (m)' : 'Hoogte (m)', iH) : null,
         h('div', { class: 'frow', style: { gridTemplateColumns: '1fr' } }, iNote),
         h('div', { class: 'btnrow' },
@@ -380,6 +385,8 @@ export class InfoPanel {
           h('button', { onclick: () => { if (confirm(`${st.label} verwijderen?`)) onDelete(); } }, 'Verwijderen')),
       ),
       o.soort === 'hekwerk' ? this.fenceSection(o) : null,
+      o.soort === 'maatlijn' ? h('table', {}, ...o.coords.slice(1).map((q, i) => h('tr', {}, h('td', {}, `Maat ${i + 1}`), h('td', { class: 'num' }, `${Math.hypot(q[0] - o.coords[i][0], q[1] - o.coords[i][1]).toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m`))),
+        o.coords.length > 2 ? h('tr', {}, h('td', {}, h('b', {}, 'Totaal')), h('td', { class: 'num' }, h('b', {}, `${totalLength(o.coords as Pt[]).toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m`))) : null) : null,
       h('div', { class: 'note', style: { marginLeft: 0 } }, o.geom === 'punten' ? 'Sleep een punt om het te verplaatsen; dubbelklik op een punt om het te verwijderen.' : 'Sleep de blauwe bolletjes om hoekpunten te verplaatsen, sleep een wit tussenpunt om een hoekpunt toe te voegen, dubbelklik op een hoekpunt om het te verwijderen. Sleep het object zelf om het geheel te verplaatsen. Ongedaan maken: Ctrl+Z.'),
       o.soort === 'doorrijhoogte' ? h('div', { class: 'note', style: { marginLeft: 0 } }, 'Wordt in fase 4 gebruikt voor de conflictcontrole met de voertuighoogte.') : null,
       o.soort === 'nietBerijdbaar' ? h('div', { class: 'note', style: { marginLeft: 0 } }, 'Vlak waar voertuigen niet mogen of kunnen rijden (fase 4).') : null,
@@ -423,6 +430,24 @@ export class InfoPanel {
       gates.length ? h('table', {}, ...gateRows) : h('div', { class: 'note', style: { marginLeft: 0 } }, 'Nog geen poort.'),
       h('div', { class: 'btnrow' }, h('button', { onclick: addGate }, '＋ Poort toevoegen')),
       h('div', { class: 'note', style: { marginLeft: 0 } }, 'Sleep het oranje blokje boven de poort om hem langs het hek te verschuiven (per heel hek).'),
+    );
+  }
+
+  // ------------------------------------------------------------------ meten
+  showMeasure(pts: MeasurePoint[], finished: boolean, actions: { toDimension: () => void; clear: () => void; stop: () => void }) {
+    const f = (v: number) => v.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const t = measureTotals(pts);
+    this.open('Meten', finished ? `${pts.length} punten – klik om opnieuw te meten` : 'Klik punten; dubbelklik of Enter = klaar, Backspace = punt terug, Esc = stoppen',
+      pts.length < 2 ? h('div', { class: 'note', style: { marginLeft: 0 } }, 'Klik op de kaart of op een gebouw. Punten springen naar hoeken van gebouwen, het nieuwe pand, perceelgrenzen, meetpunten en eigen objecten (roze ring). Shift = niet springen.') : null,
+      t.segmenten.length ? h('table', {},
+        h('tr', {}, h('th', {}, ''), h('th', { style: { textAlign: 'right' } }, 'horizontaal'), h('th', { style: { textAlign: 'right' } }, 'ΔH'), h('th', { style: { textAlign: 'right' } }, '3D')),
+        ...t.segmenten.map((sg, i) => h('tr', {}, h('td', {}, `${i + 1}`), h('td', { class: 'num' }, `${f(sg.horizontaal)} m`), h('td', { class: 'num' }, `${sg.dh >= 0 ? '+' : '−'}${f(Math.abs(sg.dh))}`), h('td', { class: 'num' }, `${f(sg.ruimtelijk)} m`))),
+        t.segmenten.length > 1 ? h('tr', {}, h('td', {}, h('b', {}, 'Totaal')), h('td', { class: 'num' }, h('b', {}, `${f(t.horizontaal)} m`)), h('td', {}, ''), h('td', { class: 'num' }, `${f(t.ruimtelijk)} m`)) : null) : null,
+      pts.length ? h('table', {}, ...pts.map((p, i) => h('tr', {}, h('td', {}, `P${i + 1}`), h('td', { class: 'num' }, fmtRD(p.x, p.y)), h('td', { class: 'num' }, fmtNAP(p.h))))) : null,
+      h('div', { class: 'btnrow' },
+        pts.length >= 2 ? h('button', { class: 'primary', onclick: actions.toDimension }, 'Als maatlijn plaatsen') : null,
+        pts.length ? h('button', { onclick: actions.clear }, 'Nieuwe meting') : null,
+        h('button', { onclick: actions.stop }, 'Stoppen (Esc)')),
     );
   }
 

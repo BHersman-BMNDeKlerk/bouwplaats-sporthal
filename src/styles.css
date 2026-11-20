@@ -143,3 +143,10 @@ details.sub summary { cursor: pointer; font-size: 13px; color: var(--muted); pad
 #toolbar .dropdown .menu button { background: #fff; color: var(--text); border: 0; text-align: left; padding: 8px 10px; border-radius: 5px; }
 #toolbar .dropdown .menu button:hover { background: #fff7e0; }
 #viewport.drawing canvas { cursor: crosshair; }
+
+.layers h2.collapsible { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; }
+.layers h2.collapsible::before { content: '▾'; font-size: 11px; transition: transform .15s; }
+.layers h2.collapsible.closed::before { transform: rotate(-90deg); }
+.layers h2.collapsible:hover { color: var(--text); }
+.lsec-tools { font-size: 12px; text-align: right; margin-bottom: -4px; }
+#layers[hidden] { display: none; }

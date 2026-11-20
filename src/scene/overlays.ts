@@ -12,6 +12,7 @@ import type { Placement } from '../data/ifcGeom';
 import { themaStyle, type KlicData, type KlicLine } from '../data/klic';
 import type { CanvasOverlay, DrawContext } from './terrainLayer';
 import { gatePanels, panels } from '../core/polyline';
+import { offsetSegment } from '../core/measure';
 
 const inView = (c: DrawContext, x: number, y: number, m = 5) => x > c.bb.xmin - m && x < c.bb.xmax + m && y > c.bb.ymin - m && y < c.bb.ymax + m;
 const fmt = (v: number, d = 2) => v.toLocaleString('nl-NL', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -344,6 +345,7 @@ export const MANUAL_STYLE: Record<ManualObject['soort'], { label: string; kleur:
   paaltjes: { label: 'Paaltjes', kleur: '#c62828' },
   hekwerk: { label: 'Bouwhekken', kleur: '#263238' },
   nietBerijdbaar: { label: 'Niet berijdbaar', kleur: '#d32f2f' },
+  maatlijn: { label: 'Maatlijn', kleur: '#0d47a1' },
 };
 
 let hatch: HTMLCanvasElement | null = null;
@@ -388,6 +390,8 @@ export function manualOverlay(getP: () => ProjectData, selectedId: () => string 
         ctx.setLineDash(o.soort === 'doorrijhoogte' ? [0.8 * ppm, 0.4 * ppm] : []);
         ctx.stroke();
         ctx.setLineDash([]);
+      } else if (o.soort === 'maatlijn') {
+        continue; // maatlijnen worden in 3D bovenop alles getekend (userLayer)
       } else if (o.soort === 'hekwerk' && pts.length >= 2) {
         drawFence(c, o, sel);
         continue;
@@ -493,7 +497,7 @@ export function hitManual(p: ProjectData, L: LayerState, x: number, y: number, t
   for (let i = p.handmatig.length - 1; i >= 0; i--) {
     const o = p.handmatig[i];
     if (!L.handmatig[o.soort]) continue;
-    const pts = o.coords;
+    const pts = o.soort === 'maatlijn' ? o.coords.map((p, k, arr) => (k < arr.length - 1 ? offsetSegment(p, arr[k + 1], o.offset ?? 0)[0] : offsetSegment(arr[k - 1], p, o.offset ?? 0)[1]) as [number, number]) : o.coords;
     if (o.geom === 'vlak' && pts.length >= 3 && pointInRing(x, y, pts)) return o;
     if (o.geom !== 'punten')
       for (let k = 0; k < pts.length - (o.geom === 'vlak' ? 0 : 1); k++) {

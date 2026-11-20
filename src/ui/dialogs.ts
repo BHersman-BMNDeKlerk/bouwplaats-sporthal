@@ -70,6 +70,15 @@ export function helpContent(): Node {
   rechts (standaard 2 hekken = 7,00 m) en verschuif je met het oranje blokje.</p>
   <p><b>Bewerken:</b> selecteer een object en sleep de blauwe bolletjes (hoekpunten), een wit tussenpunt (nieuw hoekpunt) of het
   object zelf (verplaatsen). Dubbelklik op een hoekpunt verwijdert het. Alles is ongedaan te maken met <kbd>Ctrl</kbd>+<kbd>Z</kbd>.</p>
+  <h3>Meten en maatlijnen</h3>
+  <p><b>📏 Meten</b> (<kbd>M</kbd>): klik punten op de kaart of op gebouwen. Per stuk zie je de horizontale afstand, het
+  hoogteverschil (ΔH) en de 3D-afstand, plus het totaal. Punten springen naar hoeken van gebouwen, het nieuwe pand,
+  perceelgrenzen, meetpunten en eigen objecten (roze ring); <kbd>Shift</kbd> = niet springen. Dubbelklik/<kbd>Enter</kbd> = klaar,
+  <kbd>Backspace</kbd> = punt terug, <kbd>Esc</kbd> = stoppen. Met <i>Als maatlijn plaatsen</i> bewaar je de meting.</p>
+  <p><b>Maatlijn</b> (menu Tekenen): maatlijn of kettingmaat zoals op tekening. De afstand tot de punten stel je in het
+  paneel rechts in; hoekpunten zijn te verslepen.</p>
+  <h3>Lagenpaneel</h3>
+  <p>Klap het paneel in met <b>☰ Lagen</b> (<kbd>L</kbd>) of klap losse secties in door op de kop te klikken.</p>
   <h3>Ontwerpmodel (IFC)</h3>
   <p>Het nieuwe pand staat onder <b>Ontwerp (IFC)</b> als grijze blokken (buitenwerkse contour, per deel tot de
   hoogste dakrand) en als paarse buitencontour op het maaiveld. Klik op het pand voor peil (0 P = −0,08 m NAP),
@@ -90,7 +99,7 @@ export function helpContent(): Node {
     <tr><td>${k('Ctrl')} + ${k('O')}</td><td>Project openen</td><td>${k('N')}</td><td>Noord boven</td></tr>
     <tr><td>${k('Esc')}</td><td>Selectie / venster sluiten</td><td>${k('S')}</td><td>Sporthal: normaal → transparant → verborgen</td></tr>
     <tr><td>${k('F1')} of ${k('?')}</td><td>Deze handleiding</td><td>${k('B')}</td><td>Bronnen en nauwkeurigheid</td></tr>
-    <tr><td>${k('L')}</td><td>Lagenpaneel in-/uitklappen</td><td></td><td></td></tr>
+    <tr><td>${k('L')}</td><td>Lagenpaneel in-/uitklappen</td><td>${k('M')}</td><td>Meten</td></tr>
   </table>
   <h3>Let op</h3>
   <ul>

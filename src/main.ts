@@ -25,6 +25,8 @@ import { dxfOverlay, GRENS_KLEUR, hitKlic, hitManual, hitSurvey, klicOverlay, MA
 import { UserLayer } from './scene/userLayer';
 import { DrawTool, type DrawGeom } from './scene/drawTool';
 import { EditHandles } from './scene/editHandles';
+import { MeasureTool } from './scene/measureTool';
+import { SnapIndex, type MeasurePoint } from './core/measure';
 import { BOUWHEK, clampGate, nearestPanel, panels, snapFrom, totalLength, type Pt } from './core/polyline';
 import { editCodes, importBoundary, importDxf, importKlic, importPoints, type ImportContext } from './ui/importDialogs';
 import { themaStyle } from './data/klic';
@@ -103,6 +105,9 @@ async function start() {
   let dragHidden: string | null = null;
   const handles = new EditHandles(frame, (x, y) => terrain.heightAt(x, y));
   viewer.scene.add(handles.group);
+  const measure = new MeasureTool(frame);
+  viewer.scene.add(measure.group);
+  const snapIndex = new SnapIndex(5);
   terrain.overlays.push(
     dxfOverlay(() => store.data, () => designPlacement()),
     klicOverlay(() => store.data),
@@ -198,6 +203,7 @@ async function start() {
   };
   updateUndo();
   store.onChange((_p, reden) => {
+    rebuildSnap();
     if (selectedManual) handles.set(store.data.handmatig.find((q) => q.id === selectedManual) ?? null);
     applyScene();
     renderPanel();
@@ -281,6 +287,12 @@ async function start() {
     if (trees && trees.group.visible) targets.push(trees.crowns);
     const hits = raycaster.intersectObjects(targets, true);
     const tp = terrain.intersectRay(raycaster.ray);
+    // maatlijnen liggen bovenop alles: die gaan voor
+    if (tp) {
+      const rd0 = frame.toRD(tp.x, tp.y, tp.z);
+      const ml = hitManual({ ...store.data, handmatig: store.data.handmatig.filter((q) => q.soort === 'maatlijn') }, L, rd0.x, rd0.y, Math.max(0.3, 6 * mppAt(tp)));
+      if (ml) return { kind: 'manual', o: ml, point: tp };
+    }
     const tDist = tp ? tp.distanceTo(raycaster.ray.origin) : Infinity;
     for (const hit of hits) {
       if (hit.distance > tDist + 0.5) break;
@@ -321,10 +333,14 @@ async function start() {
     pendingMove = null;
     if (ev.buttons) { tooltip.hidden = true; return; }
     const hit = pick(ev);
-    if (drawTool.active) {
+    if (drawTool.active || measure.active) {
       tooltip.hidden = true;
-      const tp = hit?.point;
-      if (tp) { const rd = frame.toRD(tp.x, tp.y, tp.z); drawTool.move(rd.x, rd.y, ev.shiftKey); stCoord.textContent = fmtRD(rd.x, rd.y); }
+      const mp = hit ? snapPoint(hit.point, ev) : null;
+      if (mp) {
+        stCoord.textContent = fmtRD(mp.x, mp.y);
+        if (drawTool.active) drawTool.move(mp.x, mp.y, ev.shiftKey);
+        else measure.move(mp);
+      }
       return;
     }
     buildings?.setHover(hit?.kind === 'building' ? hit.b : null);
@@ -406,8 +422,10 @@ async function start() {
     downAt = null;
     if (moved > 4) return;
     const hit = pick(ev);
-    if (drawTool.active) {
-      if (hit) { const rd = frame.toRD(hit.point.x, hit.point.y, hit.point.z); drawTool.click(rd.x, rd.y, ev.shiftKey); }
+    if (drawTool.active || measure.active) {
+      const mp = hit ? snapPoint(hit.point, ev) : null;
+      if (mp && drawTool.active) drawTool.click(mp.x, mp.y, ev.shiftKey);
+      else if (mp) { measure.add(mp); showMeasure(); }
       return;
     }
     if (!hit) return select(null);
@@ -424,7 +442,68 @@ async function start() {
     else { const rd = frame.toRD(hit.point.x, hit.point.y, hit.point.z); select({ kind: 'terrain', x: rd.x, y: rd.y }); }
   });
 
-  canvas.addEventListener('dblclick', (ev) => { if (drawTool.active) { ev.preventDefault(); drawTool.finish(); } });
+  canvas.addEventListener('dblclick', (ev) => {
+    if (drawTool.active) { ev.preventDefault(); drawTool.finish(); }
+    else if (measure.active) { ev.preventDefault(); measure.finish(); showMeasure(); }
+  });
+
+  // --- snappen en meten
+  function rebuildSnap() {
+    snapIndex.clear();
+    for (const b of buildings?.items ?? []) snapIndex.addRings(b.rec.footprint, 'gebouw');
+    const dp = designPlacement();
+    if (design && dp) snapIndex.addRings(placeRings(dp, design.model.contour), 'nieuw pand');
+    for (const p of terrain.parcels) snapIndex.addRings(p.polys.flat(), 'perceelgrens (BRK)');
+    const d = store.data;
+    for (const q of d.inmeting.grens?.punten ?? []) snapIndex.add(q.x, q.y, `grenspunt ${q.nr}`);
+    for (const q of d.inmeting.punten?.punten ?? []) snapIndex.add(q.x, q.y, `meetpunt ${q.nr}`);
+    for (const o of d.handmatig) for (const q of o.coords) snapIndex.add(q[0], q[1], MANUAL_STYLE[o.soort].label);
+  }
+  rebuildSnap();
+  /** Punt onder de muis, gesprongen naar een hoekpunt (tenzij Shift). Hoogte: geraakt punt of maaiveld. */
+  function snapPoint(p: THREE.Vector3, ev: MouseEvent): MeasurePoint {
+    const rd = frame.toRD(p.x, p.y, p.z);
+    const mpp = mppAt(p);
+    const s = ev.shiftKey ? null : snapIndex.nearest(rd.x, rd.y, Math.max(0.15, 10 * mpp));
+    if (s) {
+      const out = { x: s.x, y: s.y, h: terrain.heightAt(s.x, s.y) ?? rd.h };
+      measure.showSnap(out, Math.max(0.15, 9 * mpp));
+      status(`Gesprongen naar ${s.bron}${drawTool.active ? '' : ' – Shift = vrij'}`, 0);
+      return out;
+    }
+    measure.showSnap(null);
+    return { x: rd.x, y: rd.y, h: rd.h };
+  }
+  function showMeasure() {
+    info.showMeasure(measure.pts, measure.finished, {
+      toDimension: () => {
+        const pts = measure.pts.map((q) => [Math.round(q.x * 1000) / 1000, Math.round(q.y * 1000) / 1000] as [number, number]);
+        stopMeasure();
+        const id = `m-${Date.now().toString(36)}`;
+        L.handmatig.maatlijn = true;
+        store.change('Maatlijn geplaatst', (pd) => { pd.handmatig.push({ id, soort: 'maatlijn', geom: 'lijn', coords: pts, naam: '', offset: 1.0 }); });
+        select({ kind: 'manual', id });
+      },
+      clear: () => { measure.start(); showMeasure(); },
+      stop: () => stopMeasure(),
+    });
+  }
+  function startMeasure() {
+    if (drawTool.active) drawTool.cancel();
+    select(null);
+    measure.start();
+    $('viewport').classList.add('drawing');
+    $('btnMeasure').classList.add('active');
+    showMeasure();
+  }
+  function stopMeasure() {
+    measure.stop();
+    $('viewport').classList.remove('drawing');
+    $('btnMeasure').classList.remove('active');
+    info.hide();
+    status('Meten gestopt');
+  }
+  $('btnMeasure').onclick = () => (measure.active ? stopMeasure() : startMeasure());
 
   // --- importeren en tekenen
   const importCtx: ImportContext = {
@@ -462,9 +541,11 @@ async function start() {
     paaltjes: { soort: 'paaltjes', geom: 'punten', naam: 'Paaltjes', extra: { hoogte: 0.9 } },
     hekwerk: { soort: 'hekwerk', geom: 'lijn', naam: 'Bouwhekken', extra: { hoogte: BOUWHEK.hoogte, poorten: [] } },
     nietBerijdbaar: { soort: 'nietBerijdbaar', geom: 'vlak', naam: 'Niet berijdbaar', extra: {} },
+    maatlijn: { soort: 'maatlijn', geom: 'lijn', naam: '', extra: { offset: 1.0 } },
   };
   const startDraw = (key: string) => {
     const d = DRAW[key];
+    if (measure.active) stopMeasure();
     select(null);
     $('viewport').classList.add('drawing');
     drawTool.start({
@@ -475,12 +556,13 @@ async function start() {
       } : {}),
       onFinish: (coords) => {
         $('viewport').classList.remove('drawing');
+        measure.showSnap(null);
         const id = `m-${Date.now().toString(36)}`;
         L.handmatig[d.soort] = true;
         store.change(`${MANUAL_STYLE[d.soort].label} getekend`, (pd) => { pd.handmatig.push({ id, soort: d.soort, geom: d.geom, coords, naam: d.naam, ...d.extra }); });
         select({ kind: 'manual', id });
       },
-      onCancel: () => $('viewport').classList.remove('drawing'),
+      onCancel: () => { $('viewport').classList.remove('drawing'); measure.showSnap(null); },
     });
   };
   for (const b of $('menuDraw').querySelectorAll('button')) (b as HTMLButtonElement).onclick = () => { closeMenus(); startDraw((b as HTMLElement).dataset.draw!); };
@@ -658,6 +740,15 @@ async function start() {
   });
 
   // --- knoppen
+  const toggleLayers = () => {
+    const el = $('layers');
+    el.hidden = !el.hidden;
+    $('btnLayers').classList.toggle('active', !el.hidden);
+    try { localStorage.setItem('bouwplaats-sporthal:lagen-paneel', el.hidden ? 'dicht' : 'open'); } catch { /* */ }
+  };
+  $('btnLayers').onclick = toggleLayers;
+  try { if (localStorage.getItem('bouwplaats-sporthal:lagen-paneel') === 'dicht') $('layers').hidden = true; } catch { /* */ }
+  $('btnLayers').classList.toggle('active', !$('layers').hidden);
   $('btnSave').onclick = saveProject;
   $('btnOpen').onclick = () => fileOpen.click();
   btnUndo.onclick = () => store.undo();
@@ -699,6 +790,11 @@ async function start() {
     if (ctrl && (key === 'y' || (key === 'z' && ev.shiftKey))) { ev.preventDefault(); store.redo(); return; }
     if (ctrl && key === 's') { ev.preventDefault(); saveProject(); return; }
     if (ctrl && key === 'o') { ev.preventDefault(); fileOpen.click(); return; }
+    if (measure.active && !modalOpen()) {
+      if (ev.key === 'Enter') { ev.preventDefault(); measure.finish(); showMeasure(); return; }
+      if (ev.key === 'Escape') { ev.preventDefault(); stopMeasure(); return; }
+      if (ev.key === 'Backspace') { ev.preventDefault(); measure.undoPoint(); showMeasure(); return; }
+    }
     if (drawTool.active) {
       if (ev.key === 'Enter') { ev.preventDefault(); drawTool.finish(); return; }
       if (ev.key === 'Escape') { ev.preventDefault(); drawTool.cancel(); return; }
@@ -712,8 +808,9 @@ async function start() {
     else if (key === 'p') viewer.to3D();
     else if (key === 'z') zoomSporthal();
     else if (key === 'n') viewer.northUp();
+    else if (key === 'm') (measure.active ? stopMeasure() : startMeasure());
     else if (key === 'b') openModal(sourcesContent(m));
-    else if (key === 'l') { const el = $('layers'); el.hidden = !el.hidden; }
+    else if (key === 'l') toggleLayers();
     else if (key === 's') {
       const order: SporthalMode[] = ['normaal', 'transparant', 'verborgen'];
       L.sporthal = order[(order.indexOf(L.sporthal) + 1) % order.length];

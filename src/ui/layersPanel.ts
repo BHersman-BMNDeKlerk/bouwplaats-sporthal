@@ -203,4 +203,47 @@ export function renderLayersPanel(o: LayersPanelOpts) {
   // --- Overig
   root.append(h('h2', {}, 'Overig'));
   root.append(check('Projectgebied (opgegeven hoekpunten)', () => L.projectgebied, (v) => (L.projectgebied = v), 'terrain', { swatch: swatch(undefined, '#1565c0') }));
+  makeCollapsible(root);
+}
+
+const COLLAPSE_KEY = 'bouwplaats-sporthal:lagen-dicht';
+
+/** Kopjes (h2) klikbaar maken: secties in- en uitklappen; de stand wordt onthouden. */
+function makeCollapsible(root: HTMLElement) {
+  let closed: string[] = [];
+  try { closed = JSON.parse(localStorage.getItem(COLLAPSE_KEY) ?? '[]'); } catch { /* */ }
+  const kids = [...root.children];
+  let body: HTMLElement | null = null;
+  for (const el of kids) {
+    if (el.tagName === 'H2') {
+      const title = el.textContent ?? '';
+      const h2 = el as HTMLElement;
+      body = h('div', { class: 'lsec' });
+      h2.after(body);
+      h2.classList.add('collapsible');
+      const isClosed = closed.includes(title);
+      body.hidden = isClosed;
+      h2.classList.toggle('closed', isClosed);
+      const b = body;
+      h2.onclick = () => {
+        b.hidden = !b.hidden;
+        h2.classList.toggle('closed', b.hidden);
+        closed = b.hidden ? [...new Set([...closed, title])] : closed.filter((t) => t !== title);
+        try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(closed)); } catch { /* */ }
+      };
+    } else if (body) body.append(el);
+  }
+  root.prepend(h('div', { class: 'lsec-tools' },
+    h('a', { href: '#', onclick: (e: Event) => { e.preventDefault(); setAll(true); } }, 'alles inklappen'), ' · ',
+    h('a', { href: '#', onclick: (e: Event) => { e.preventDefault(); setAll(false); } }, 'alles uitklappen')));
+  function setAll(dicht: boolean) {
+    const titles: string[] = [];
+    for (const h2 of root.querySelectorAll('h2.collapsible')) {
+      titles.push(h2.textContent ?? '');
+      (h2.nextElementSibling as HTMLElement).hidden = dicht;
+      h2.classList.toggle('closed', dicht);
+    }
+    closed = dicht ? titles : [];
+    try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(closed)); } catch { /* */ }
+  }
 }

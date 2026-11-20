@@ -68,7 +68,7 @@ export interface DxfRef {
   zichtbaar: boolean;
 }
 
-export type ManualKind = 'doorrijhoogte' | 'paaltjes' | 'hekwerk' | 'nietBerijdbaar';
+export type ManualKind = 'doorrijhoogte' | 'paaltjes' | 'hekwerk' | 'nietBerijdbaar' | 'maatlijn';
 
 /** Handmatig getekend obstakel (RD-coördinaten). */
 export interface ManualObject {
@@ -81,6 +81,8 @@ export interface ManualObject {
   vrijeHoogte?: number;
   /** Paaltjes/hekwerk: hoogte boven maaiveld (m). */
   hoogte?: number;
+  /** Maatlijn: afstand van de maatlijn tot de gemeten punten (m, + = links van de tekenrichting). */
+  offset?: number;
   /** Hekwerk: poorten (reeksen hele bouwhekken). */
   poorten?: Gate[];
   opmerking?: string;
