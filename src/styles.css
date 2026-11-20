@@ -135,6 +135,7 @@ details.sub summary { cursor: pointer; font-size: 13px; color: var(--muted); pad
 
 #toolbar button.active { background: var(--accent); color: #222; border-color: var(--accent-dark); }
 #scalebar { position: absolute; right: 14px; bottom: 14px; background: #ffffffe6; padding: 6px 10px 5px; border-radius: 6px; font-size: 12px; box-shadow: 0 1px 4px #0002; }
+#scalebar select { width: auto; margin-top: 4px; font-size: 12px; padding: 1px 4px; }
 #scalebar .bar { height: 8px; border: 2px solid #222; border-top: 0; margin-bottom: 3px; background: repeating-linear-gradient(90deg, #222 0 50%, #fff 50% 100%); background-size: 50% 100%; }
 
 .dropdown { position: relative; }

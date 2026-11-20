@@ -35,6 +35,8 @@ export interface CraneBase {
   actieveTabel?: number;
   /** Algemene gegevens / aannames (tekst voor het paneel). */
   gegevens?: string;
+  /** Bouwfases (leeg = alle). */
+  fases?: string[];
 }
 
 export interface TowerCrane extends CraneBase {

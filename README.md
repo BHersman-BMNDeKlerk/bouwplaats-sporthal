@@ -114,6 +114,21 @@ De standaard lasttabellen zijn voorbeelden – vervang ze door de tabel van de f
 Kranen zijn versleepbaar. Opgenomen uit een lastblad: **Liebherr MK 88 Plus** (mobiele torenkraan, 45 m giek) met 9 configuraties
 (giekstand × afstempeling); alleen de rijen 4–20 m vlucht stonden op het aangeleverde blad – vul de rest aan in het kraanpaneel.
 
+## Fase 6: output en bouwfases
+
+Knop **⇩ Export** (sneltoets `E`):
+
+| Uitvoer | Inhoud |
+|---|---|
+| PDF A3/A1 liggend | Kaart op schaal 1:100 / 1:200 / 1:250 / 1:500 (in tegels gerenderd, 200 dpi A3 / 150 dpi A1), titelblok, automatische legenda, noordpijl, schaalbalk, disclaimer met databronnen en ophaaldatum |
+| DXF (R12) | RD New, meter; één laag per soort (bv. `BOUWPLAATS_SCHAFTKEET_KANTOORUNIT`, `EIGEN_BOUWHEKKEN`, `EIGEN_POORTEN`, `KRAAN_ZWENKCIRKEL_GIEK`, `ROUTE_OMHULLENDE`); optioneel ondergrond (BAG + BGT) |
+| GeoJSON | Dezelfde objecten met eigenschappen, `EPSG:28992` |
+| PNG | Huidige 2D/3D-weergave in dubbele resolutie met onderschrift |
+
+**Bouwfases / varianten** (lagenpaneel → *Bouwfase*): standaard Sloop, Ruwbouw, Afbouw; zelf toe te voegen of te hernoemen.
+Elk element, eigen object, route en kraan kan aan fases gekoppeld worden; de tekening en alle controles volgen de actieve fase.
+Rekenlogica en opmaak: `src/export/` (tests: `tests/export.test.ts`).
+
 ## Bediening (kort)
 
 | Actie | Hoe |
@@ -194,8 +209,8 @@ BGT-classificatie, boomdetectie en undo/redo. Ook de swept path-berekening (zie 
 | 2 | Eigen inmeting (CSV), KLIC-import, handmatige obstakels, DXF-onderlegger | gereed (KLIC-kleuren nog te verifiëren) |
 | 3 | Bouwplaatselementen (keten, hekken, containers, steigers, …), botsingscontrole, maatvoering | gereed |
 | 4 | Draai- en steekbewegingen (swept path) met kinematisch model + verplichte tests | gereed |
-| 5 | Kraanopstellingen (toren- en mobiele kraan), lasttabellen, overdraai | **gereed – ter beoordeling** |
-| 6 | Output: 2D op schaal, PDF A3/A1 met titelblok, DXF/GeoJSON, PNG, bouwfases | gepland |
+| 5 | Kraanopstellingen (toren- en mobiele kraan), lasttabellen, overdraai | gereed |
+| 6 | Output: 2D op schaal, PDF A3/A1 met titelblok, DXF/GeoJSON, PNG, bouwfases | **gereed – ter beoordeling** |
 
 ## Disclaimer
 

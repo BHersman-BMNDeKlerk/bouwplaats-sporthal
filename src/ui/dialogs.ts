@@ -128,6 +128,20 @@ export function helpContent(): Node {
       configuratie (giek 0°, 0° Plus, 15°, 30°, 45° × afstempeling 7,30 × 7,00 of 7,30 × 5,75 m).</li>
     <li>De meegeleverde lasttabellen van de algemene toren- en mobiele kraan zijn voorbeelden: gebruik altijd de tabel van de fabrikant voor de gekozen configuratie.</li>
   </ul>
+  <h3>Bouwfases en varianten</h3>
+  <ul>
+    <li>Kies in het lagenpaneel onder <b>Bouwfase</b> welke fase je ziet (Alles, Sloop, Ruwbouw, Afbouw – via <i>Fases beheren…</i> aan te passen of uit te breiden, bv. met varianten).</li>
+    <li>Nieuwe objecten komen in de actieve fase. Per element, eigen object, route en kraan stel je in het infopaneel in in welke fases het bestaat (geen vinkje = alle fases).</li>
+    <li>Botsingen, routeplanning en kraancontroles rekenen met wat in de actieve fase bestaat.</li>
+  </ul>
+  <h3>Exporteren (knop ⇩ Export of E)</h3>
+  <ul>
+    <li><b>PDF A3 of A1 liggend</b> op schaal 1:100 / 1:200 / 1:250 / 1:500, met titelblok, automatische legenda, noordpijl, schaalbalk en disclaimer met databronnen.
+      Het rode kader op de kaart toont het tekenvlak en volgt het midden van het beeld. De tekening neemt de actieve bouwfase en de lagen op het scherm over.</li>
+    <li><b>DXF</b> (AutoCAD/BricsCAD, R12) en <b>GeoJSON</b> (QGIS) in RD New, met een laag per soort; ondergrond (BAG-gebouwen en BGT) optioneel.</li>
+    <li><b>PNG</b> van het huidige 2D- of 3D-beeld in dubbele resolutie.</li>
+    <li>In 2D zet je de schermschaal vast met de keuzelijst bij de schaalbalk (1:100 … 1:1000).</li>
+  </ul>
   <h3>Meten en maatlijnen</h3>
   <p><b>📏 Meten</b> (<kbd>M</kbd>): klik punten op de kaart of op gebouwen. Per stuk zie je de horizontale afstand, het
   hoogteverschil (ΔH) en de 3D-afstand, plus het totaal. Punten springen naar hoeken van gebouwen, het nieuwe pand,

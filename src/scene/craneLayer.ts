@@ -41,8 +41,7 @@ export function cranesOverlay(getCranes: () => Crane[], selectedId: () => string
       const rings = loadRings(k);
       for (const r of rings) { ctx.beginPath(); circle(c, k.x, k.y, r.radius); ctx.stroke(); }
       ctx.setLineDash([]);
-      const la = dir + Math.PI / 4;
-      for (const r of rings) c.label(`${fmt(r.radius, 0)} m · ${fmt(r.last, r.last < 10 ? 2 : 1)} t`, k.x + r.radius * Math.cos(la), k.y + r.radius * Math.sin(la), 0, 1.8, '#8a3c00', '#ffffffee', true);
+      // labels van de ringen en de kraannaam staan als 3D-label in beeld (ook boven daken)
       if (k.type === 'toren') {
         // contragiek
         ctx.beginPath(); circle(c, k.x, k.y, k.contragiekLengte);
@@ -81,7 +80,6 @@ export function cranesOverlay(getCranes: () => Crane[], selectedId: () => string
         ctx.lineTo(c.X(k.x + rr * Math.cos(dir)), c.Y(k.y + rr * Math.sin(dir)));
         ctx.strokeStyle = '#e6a100'; ctx.lineWidth = lw(0.7, 3); ctx.stroke();
       }
-      c.label(k.naam, k.x, k.y - (k.type === 'toren' ? k.voetBreedte / 2 + 1.8 : k.stempelBreedte / 2 + 2), 0, 2.0, '#5d2a00', '#ffffffdd', true);
     }
     const m = marker();
     if (m) {

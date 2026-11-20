@@ -16,6 +16,8 @@ export interface Route {
   zichtbaar: boolean;
   /** Spookbeelden om de zoveel meter (0 = uit). */
   spook: number;
+  /** Bouwfases (leeg = alle). */
+  fases?: string[];
   /** Automatisch gepland: start/eind en instellingen. */
   plan?: {
     start: [number, number, number];

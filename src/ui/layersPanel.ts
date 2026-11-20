@@ -40,6 +40,10 @@ export interface LayersPanelOpts {
   routeStatus: (r: Route) => { ok: boolean; botsingen: number };
   onSelectRoute: (id: string) => void;
   onRecalcRoutes: () => void;
+  /** Fase 6: bouwfases */
+  fases: { id: string; naam: string }[];
+  onFase: (id: string) => void;
+  onFaseBeheer: () => void;
   onRouteVisible: (id: string, v: boolean) => void;
   /** Fase 5 */
   craneStatus: (id: string) => { conflicts: number; letop: number };
@@ -83,6 +87,12 @@ export function renderLayersPanel(o: LayersPanelOpts) {
   }
 
   // --- Plattegrond
+  root.append(h('h2', {}, 'Bouwfase'));
+  root.append(h('div', { class: 'seg', style: { marginLeft: 0, flexWrap: 'wrap' } },
+    h('button', { class: L.fase ? '' : 'on', onclick: () => o.onFase('') }, 'Alles'),
+    ...o.fases.map((f) => h('button', { class: L.fase === f.id ? 'on' : '', onclick: () => o.onFase(f.id) }, f.naam))));
+  root.append(h('div', { class: 'note', style: { marginLeft: 0 } }, L.fase ? `Alleen wat in "${o.fases.find((f) => f.id === L.fase)?.naam ?? L.fase}" bestaat; nieuwe objecten komen in deze fase. ` : 'Alle fases tegelijk. ',
+    h('a', { href: '#', onclick: (e: Event) => { e.preventDefault(); o.onFaseBeheer(); } }, 'Fases beheren…')));
   root.append(h('h2', {}, 'Weergave'));
   const segP = h('div', { class: 'seg', style: { marginLeft: 0 } });
   for (const [v, label] of [[false, 'Luchtfoto / 3D'], [true, 'Plattegrond (kadaster)']] as [boolean, string][])

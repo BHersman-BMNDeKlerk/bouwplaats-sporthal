@@ -74,8 +74,17 @@ export interface DxfRef {
 export type ManualKind = 'doorrijhoogte' | 'paaltjes' | 'hekwerk' | 'nietBerijdbaar' | 'maatlijn' | 'looproute' | 'vluchtroute' | 'vrijvlak' | 'vrijelijn' | 'vergundeZone';
 
 /** Handmatig getekend obstakel (RD-coördinaten). */
+export interface Bouwfase { id: string; naam: string }
+export const STANDAARD_FASES: Bouwfase[] = [{ id: 'sloop', naam: 'Sloop' }, { id: 'ruwbouw', naam: 'Ruwbouw' }, { id: 'afbouw', naam: 'Afbouw' }];
+/** Hoort een object bij de actieve fase? (geen fase-indeling = altijd) */
+export function inFase(o: { fases?: string[] }, actief: string): boolean {
+  return !actief || !o.fases || o.fases.length === 0 || o.fases.includes(actief);
+}
+
 export interface ManualObject {
   id: string;
+  /** Bouwfases waarin dit object bestaat (leeg = alle fases). */
+  fases?: string[];
   soort: ManualKind;
   geom: 'punten' | 'lijn' | 'vlak';
   coords: [number, number][];
@@ -123,6 +132,8 @@ export interface ProjectData {
   weergave?: { lagen?: Record<string, boolean | number | string>; camera?: number[] };
   /** Gereserveerd voor latere fases. */
   elementen: Element[];
+  /** Fase 6: bouwfases / varianten (bv. sloop, ruwbouw, afbouw). */
+  fases?: Bouwfase[];
   /** Fase 4: voertuigroutes (swept path). */
   routes: Route[];
   /** Fase 5: kraanopstellingen. */
@@ -172,6 +183,7 @@ export function parseProject(text: string): ProjectData {
   p.elementen = Array.isArray(d.elementen) ? d.elementen.filter((e: any) => e && e.type && Number.isFinite(e.x) && Number.isFinite(e.y)) : [];
   p.routes = Array.isArray(d.routes) ? d.routes.filter((r: any) => r && r.voertuig && Array.isArray(r.legs)) : [];
   p.kranen = Array.isArray(d.kranen) ? d.kranen.filter((k: any) => k && (k.type === 'toren' || k.type === 'mobiel') && Number.isFinite(k.x) && Number.isFinite(k.y)) : [];
+  p.fases = Array.isArray(d.fases) ? d.fases.filter((f: any) => f && typeof f.id === 'string') : undefined;
   p.opgeslagen = d.opgeslagen;
   return p;
 }

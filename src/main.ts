@@ -2,7 +2,7 @@ import './styles.css';
 import * as THREE from 'three';
 import { LocalFrame, fmtM, fmtNAP, fmtRD } from './core/coords';
 import { mergeLayers, type LayerState, type SporthalMode } from './core/layers';
-import { emptyProject, parseProject, ProjectStore, type ProjectData } from './core/project';
+import { emptyProject, inFase, parseProject, ProjectStore, STANDAARD_FASES, type ProjectData } from './core/project';
 import { PROJECT } from './core/projectConfig';
 import { CLASS_STYLES } from './data/bgt';
 import { effectiveHeights, relative } from './data/heights';
@@ -44,6 +44,12 @@ import { RouteLayer, hitRoute, routesOverlay, ROUTE_KLEUR } from './scene/routeL
 import { RouteHandles, type RouteHandle } from './scene/routeHandles';
 import { routePanel } from './ui/routePanel';
 import { HEIGHT } from './core/flatten';
+import { collectFeatures } from './export/collect';
+import { legendFrom } from './export/features';
+import { toDxf } from './export/dxf';
+import { toGeoJSON } from './export/geojson';
+import { kaartMeters, layout, makePdf, SCHALEN, type Papier } from './export/pdf';
+import { renderTiled, topCamera } from './export/render';
 import { canLift, craneWarnings, newMK88, newMobileCrane, newTowerCrane, overlaps, type Crane, type CraneEnv, type CraneWarning, type LiftCheck } from './cranes/cranes';
 import { CraneLayer, cranesOverlay, hitCrane, type LiftMarker } from './scene/craneLayer';
 import { cranePanel } from './ui/cranePanel';
@@ -66,6 +72,7 @@ type Selection =
   | { kind: 'route'; id: string }
   | { kind: 'crane'; id: string }
   | { kind: 'lift' }
+  | { kind: 'export' }
   | null;
 
 async function start() {
@@ -142,13 +149,19 @@ async function start() {
   let placing: Element | null = null;
   let rotStep = 15;
   try { rotStep = Number(localStorage.getItem('bouwplaats-sporthal:draaistap')) || 15; } catch { /* */ }
-  const elVisible = (e: Element) => L.elementLagen[e.laag] !== false;
+  const fOk = (o: { fases?: string[] }) => inFase(o, L.fase);
+  const fasen = () => store.data.fases ?? STANDAARD_FASES;
+  const elVisible = (e: Element) => L.elementLagen[e.laag] !== false && fOk(e);
+  /** Projectdata zoals zichtbaar in de actieve bouwfase. */
+  const viewData = (): ProjectData => ({ ...store.data, handmatig: store.data.handmatig.filter(fOk) });
+  const visRoutes = () => store.data.routes.filter(fOk);
+  const visCranes = () => store.data.kranen.filter(fOk);
   const snapIndex = new SnapIndex(5);
   terrain.overlays.push(
     dxfOverlay(() => store.data, () => designPlacement()),
     klicOverlay(() => store.data),
     elementsOverlay(() => store.data.elementen, (e) => elVisible(e), () => conflictSet, () => selectedElement, () => dragHidden, () => L.botsingen),
-    manualOverlay(() => store.data, () => selectedManual, () => dragHidden),
+    manualOverlay(() => viewData(), () => selectedManual, () => dragHidden),
     surveyOverlay(() => store.data),
   );
 
@@ -203,7 +216,7 @@ async function start() {
       const r = Math.max(0.15, Math.max(o.spec.breedte, o.spec.diepte) / 2);
       add({ id: `o:${o.id}`, naam: o.spec.omschrijving, soort: 'paal', ring: [[o.x - r, o.y - r], [o.x + r, o.y - r], [o.x + r, o.y + r], [o.x - r, o.y + r], [o.x - r, o.y - r]] });
     }
-    out.push(...manualObstacles(store.data.handmatig));
+    out.push(...manualObstacles(viewData().handmatig));
     // BGT: muren, hekken, hagen, struiken en water
     for (const l of terrain.lines) {
       if (!BGT_HARD_LINES.has(l.cls) || !L.bgt || !L.bgtKlassen[l.cls]) continue;
@@ -229,7 +242,7 @@ async function start() {
   let selectedRoute: string | null = null;
   let routePos = 0, routePlaying = false, routeDebug = false, lastFrameT = 0;
   let routePanelUpdate: ((s: Sample | null, p: number) => void) | null = null;
-  terrain.overlays.push(routesOverlay(() => store.data.routes, routeEngine, () => selectedRoute));
+  terrain.overlays.push(routesOverlay(() => visRoutes(), routeEngine, () => selectedRoute));
   const routeSampleAt = (r: Route, s: number): Sample | null => {
     const ss = routeEngine.result(r).sim.samples;
     if (!ss.length) return null;
@@ -261,6 +274,7 @@ async function start() {
     drawRouteLeg(null, 'vooruit', `${v.naam}: teken de route van de vooras (vooruit)`, (pts) => {
       const r = newRoute(vehicleId, [{ richting: 'vooruit', punten: pts }]);
       L.routes = true;
+      if (L.fase) r.fases = [L.fase];
       store.change('Route getekend', (d) => { d.routes.push(r); });
       routePos = 0;
       select({ kind: 'route', id: r.id });
@@ -371,6 +385,7 @@ async function start() {
       r.pad = poses; r.plan = p2;
       id = r.id;
       L.routes = true;
+      if (L.fase) r.fases = [L.fase];
       store.change('Route automatisch gepland', (d) => { d.routes.push(r); });
     }
     routePos = 0;
@@ -394,7 +409,7 @@ async function start() {
     return planRoute(r.id, r.voertuig, { ...planFromRoute(r), ...opts });
   }
   async function recalcAll() {
-    const ids = store.data.routes.filter((r) => r.zichtbaar && r.legs.length).map((r) => r.id);
+    const ids = visRoutes().filter((r) => r.zichtbaar && r.legs.length).map((r) => r.id);
     let ok = 0;
     for (const id of ids) if (await recalcRoute(id)) ok++;
     status(`${ok} van ${ids.length} route(s) herberekend zonder obstakels${ok < ids.length ? ' – zie de melding bij de overige' : ''}`);
@@ -450,7 +465,7 @@ async function start() {
   let liftMarker: LiftMarker | null = null;
   let craneWarn = new Map<string, CraneWarning[]>();
   let craneOverlap: { a: string; b: string; tekst: string }[] = [];
-  terrain.overlays.push(cranesOverlay(() => store.data.kranen, () => selectedCrane, () => liftMarker, () => new Set([...craneWarn].filter(([, w]) => w.some((q) => q.ernst === 'conflict')).map(([id]) => id)), () => craneHidden));
+  terrain.overlays.push(cranesOverlay(() => visCranes(), () => selectedCrane, () => liftMarker, () => new Set([...craneWarn].filter(([, w]) => w.some((q) => q.ernst === 'conflict')).map(([id]) => id)), () => craneHidden));
   function craneEnv(k: Crane): Omit<CraneEnv, 'maaiveld'> {
     const b = boundary();
     const wegen: CraneEnv['wegen'] = [];
@@ -485,7 +500,7 @@ async function start() {
   }
   function computeCraneChecks() {
     craneWarn = new Map();
-    const vis = store.data.kranen.filter((k) => k.zichtbaar);
+    const vis = visCranes().filter((k) => k.zichtbaar);
     for (const k of vis) craneWarn.set(k.id, craneWarnings(k, { ...craneEnv(k), maaiveld: terrain.heightAtNAP(k.x, k.y) ?? 0 }));
     craneOverlap = overlaps(vis);
   }
@@ -502,7 +517,7 @@ async function start() {
     $('viewport').classList.remove('drawing');
   }
   function doLift(x: number, y: number, last: number) {
-    const ks = store.data.kranen.filter((k) => k.zichtbaar);
+    const ks = visCranes().filter((k) => k.zichtbaar);
     const checks: LiftCheck[] = (selection?.kind === 'crane' ? ks.filter((k) => k.id === selectedCrane) : ks).map((k) => canLift(k, x, y, last));
     liftMarker = { x, y, last, checks };
     overlayKey = '';
@@ -514,15 +529,15 @@ async function start() {
     const d = store.data;
     computeConflicts();
     elementsLayer.apply(d.elementen, elVisible, L.botsingen ? conflictSet : new Set(), selectedElement);
-    routeEngine.obstacleKey = JSON.stringify([d.handmatig, d.elementen, d.overschrijvingen.bomen, designPlacement(), L.elementLagen, L.bgtKlassen]);
+    routeEngine.obstacleKey = JSON.stringify([L.fase, d.handmatig, d.elementen, d.overschrijvingen.bomen, designPlacement(), L.elementLagen, L.bgtKlassen]);
     if (HEIGHT.factor !== L.hoogteFactor) { HEIGHT.factor = L.hoogteFactor; terrain.applyHeightFactor(); }
     computeCraneChecks();
-    craneLayer.apply(d.kranen, L.kranen, selectedCrane, liftMarker);
-    const ok = JSON.stringify([d.kranen, selectedCrane, liftMarker, L.kranen, d.inmeting, d.klic, d.onderleggers, d.handmatig, selectedManual, d.elementen, [...conflictSet], selectedElement, L.elementLagen, L.botsingen, d.routes, selectedRoute, L.routes, L.routeSporen]);
+    craneLayer.apply(visCranes(), L.kranen, selectedCrane, liftMarker);
+    const ok = JSON.stringify([L.fase, d.kranen, selectedCrane, liftMarker, L.kranen, d.inmeting, d.klic, d.onderleggers, d.handmatig, selectedManual, d.elementen, [...conflictSet], selectedElement, L.elementLagen, L.botsingen, d.routes, selectedRoute, L.routes, L.routeSporen]);
     terrain.ownParcelHighlight = !d.inmeting.grens;
     if (ok !== overlayKey) { overlayKey = ok; terrain.redraw(L); }
     if (selectedRoute) showRoutePos(); else routeLayer.hide();
-    userLayer.apply(d, L, selectedManual);
+    userLayer.apply(viewData(), L, selectedManual);
     const cw = [...craneWarn.values()].flat().filter((w) => w.ernst === 'conflict').length;
     renderWarnings(data, boundary(), L.botsingen ? conflictSet.size : 0, [
       ...(craneOverlap.length ? [`⚠ ${craneOverlap.length}× overlappende zwenkgebieden van kranen.`] : []),
@@ -563,7 +578,7 @@ async function start() {
       if (r.length) obst.push({ id: 'ontwerp', soort: 'nieuw pand', naam: 'nieuw pand (IFC)', rings: [r[0]], bbox: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] });
     }
     const b = boundary();
-    const zones = store.data.handmatig.filter((o) => o.soort === 'vergundeZone' && o.coords.length >= 3).map((o) => [[...o.coords, o.coords[0]]]);
+    const zones = viewData().handmatig.filter((o) => o.soort === 'vergundeZone' && o.coords.length >= 3).map((o) => [[...o.coords, o.coords[0]]]);
     const kavel = b.gesloten ? b.lijnen.map((l) => [l]) : [];
     conflicts = checkCollisions({
       elementen: store.data.elementen.filter(elVisible), obstakels: obst,
@@ -590,6 +605,9 @@ async function start() {
       onSelectCrane: (id) => select({ kind: 'crane', id }),
       onCraneVisible: (id, v) => { const k = store.data.kranen.find((q) => q.id === id); if (k) k.zichtbaar = v; overlayKey = ''; applyScene(); renderPanel(); autosave(); },
       onRecalcRoutes: () => { void recalcAll(); },
+      fases: fasen(),
+      onFase: (id) => { L.fase = id; overlayKey = ''; applyScene(); renderPanel(); refreshInfo(); autosave(); },
+      onFaseBeheer: () => faseBeheer(),
       onSelectRoute: (id) => select({ kind: 'route', id }),
       onRouteVisible: (id, v) => { const r = store.data.routes.find((q) => q.id === id); if (r) r.zichtbaar = v; overlayKey = ''; applyScene(); renderPanel(); autosave(); },
       onClearBezet: () => store.change('Bezette parkeervakken gewist', (pd) => { pd.elementen = pd.elementen.filter((q) => !q.groep?.startsWith('bezet')); }),
@@ -676,7 +694,72 @@ async function start() {
     refreshInfo();
     if (selectedRoute) showRoutePos();
   }
+  type FaseObj = { fases?: string[] };
+  function faseObj(d: ProjectData, s: Selection): FaseObj | undefined {
+    if (!s) return undefined;
+    if (s.kind === 'element') return d.elementen.find((q) => q.id === s.id);
+    if (s.kind === 'manual') return d.handmatig.find((q) => q.id === s.id);
+    if (s.kind === 'route') return d.routes.find((q) => q.id === s.id);
+    if (s.kind === 'crane') return d.kranen.find((q) => q.id === s.id);
+    return undefined;
+  }
+  /** Vakje 'Bestaat in bouwfase' onder in het infopaneel. */
+  function faseBox(): HTMLElement | null {
+    const o = faseObj(store.data, selection);
+    if (!o) return null;
+    const sel = selection;
+    const cur = new Set(o.fases ?? []);
+    const boxes = fasen().map((f) => {
+      const cb = h('input', { type: 'checkbox', checked: cur.has(f.id) }) as HTMLInputElement;
+      cb.onchange = () => store.change('Bouwfase aangepast', (d) => {
+        const x = faseObj(d, sel);
+        if (!x) return;
+        const set = new Set(x.fases ?? []);
+        if (cb.checked) set.add(f.id); else set.delete(f.id);
+        x.fases = set.size ? fasen().map((q) => q.id).filter((id) => set.has(id)) : undefined;
+      });
+      return h('label', { class: 'lrow', style: { display: 'inline-flex', marginRight: '10px' } }, cb, f.naam);
+    });
+    return h('fieldset', {}, h('legend', {}, 'Bestaat in bouwfase'), h('div', {}, ...boxes),
+      h('div', { class: 'note', style: { marginLeft: 0 } }, cur.size ? `Alleen zichtbaar in: ${fasen().filter((f) => cur.has(f.id)).map((f) => f.naam).join(', ')}.` : 'Geen vinkje = in alle fases.'));
+  }
   function refreshInfo() {
+    refreshInfoInner();
+    const fb = faseBox();
+    if (fb && !$('info').hidden) $('info').append(fb);
+  }
+  function faseBeheer() {
+    const rows = fasen().map((f) => ({ ...f }));
+    const list = h('div');
+    const render = () => {
+      list.innerHTML = '';
+      rows.forEach((f, i) => {
+        const inp = h('input', { type: 'text', value: f.naam, style: { width: '220px' } }) as HTMLInputElement;
+        inp.oninput = () => { f.naam = inp.value; };
+        inp.addEventListener('keydown', (ev) => ev.stopPropagation());
+        list.append(h('div', { class: 'btnrow' }, inp, h('button', { onclick: () => { rows.splice(i, 1); render(); } }, 'Verwijderen')));
+      });
+    };
+    render();
+    const nieuw = h('input', { type: 'text', placeholder: 'Nieuwe fase, bv. "Variante B" of "Fase 2a"', style: { width: '260px' } }) as HTMLInputElement;
+    nieuw.addEventListener('keydown', (ev) => ev.stopPropagation());
+    openModal(h('div', {},
+      h('h2', {}, 'Bouwfases en varianten'),
+      h('p', {}, 'Elk element, eigen object, elke route en kraan kan aan één of meer fases worden gekoppeld (infopaneel → "Bestaat in bouwfase"). Zonder koppeling staat iets in alle fases. Kies de actieve fase in het lagenpaneel; de PDF neemt de actieve fase over.'),
+      list,
+      h('div', { class: 'btnrow' }, nieuw, h('button', { onclick: () => { const n = nieuw.value.trim(); if (!n) return; rows.push({ id: `f-${Date.now().toString(36)}`, naam: n }); nieuw.value = ''; render(); } }, '+ Toevoegen')),
+      h('div', { class: 'btnrow', style: { marginTop: '16px' } }, h('button', { class: 'primary', onclick: () => {
+        const ok = rows.filter((f) => f.naam.trim()).map((f) => ({ id: f.id, naam: f.naam.trim() }));
+        const ids = new Set(ok.map((f) => f.id));
+        store.change('Bouwfases aangepast', (d) => {
+          d.fases = ok;
+          for (const o of [...d.elementen, ...d.handmatig, ...d.routes, ...d.kranen] as FaseObj[]) if (o.fases) { o.fases = o.fases.filter((id) => ids.has(id)); if (!o.fases.length) delete o.fases; }
+        });
+        if (L.fase && !ids.has(L.fase)) L.fase = '';
+        closeModal(); applyScene(); renderPanel();
+      } }, 'Opslaan'), h('button', { onclick: () => closeModal() }, 'Annuleren'))));
+  }
+  function refreshInfoInner() {
     const s = selection;
     if (!s) return info.hide();
     if (s.kind === 'building') { const b = buildings?.byId.get(s.id); if (b) info.showBuilding(b); }
@@ -726,6 +809,8 @@ async function start() {
           liftResult: lr && liftMarker && Math.abs(liftMarker.last - liftLast) < 1e-9 ? lr : lr,
           liftLast,
         }));
+    } else if (s.kind === 'export') {
+      showExport();
     } else if (s.kind === 'lift') {
       const iLast = h('input', { type: 'text', value: String(liftLast).replace('.', ','), style: { width: '90px' } }) as HTMLInputElement;
       iLast.addEventListener('keydown', (ev) => ev.stopPropagation());
@@ -806,7 +891,7 @@ async function start() {
     // maatlijnen liggen bovenop alles: die gaan voor
     if (tp) {
       const rd0 = frame.toRD(tp.x, tp.y, tp.z);
-      const ml = hitManual({ ...store.data, handmatig: store.data.handmatig.filter((q) => q.soort === 'maatlijn') }, L, rd0.x, rd0.y, Math.max(0.3, 6 * mppAt(tp)));
+      const ml = hitManual({ ...store.data, handmatig: viewData().handmatig.filter((q) => q.soort === 'maatlijn') }, L, rd0.x, rd0.y, Math.max(0.3, 6 * mppAt(tp)));
       if (ml) return { kind: 'manual', o: ml, point: tp };
     }
     const tDist = tp ? tp.distanceTo(raycaster.ray.origin) : Infinity;
@@ -831,10 +916,10 @@ async function start() {
     const tol = Math.max(0.3, 6 * mppAt(tp));
     const sv = hitSurvey(store.data, L, rd.x, rd.y, tol);
     if (sv && sv.kind !== 'grenslijn') return { kind: 'survey', s: sv, point: tp };
-    const mo = hitManual(store.data, L, rd.x, rd.y, tol);
+    const mo = hitManual(viewData(), L, rd.x, rd.y, tol);
     if (mo) return { kind: 'manual', o: mo, point: tp };
-    if (L.kranen) { const kr = hitCrane(store.data.kranen, rd.x, rd.y, tol); if (kr) return { kind: 'crane', k: kr, point: tp }; }
-    const ro = hitRoute(store.data.routes, routeEngine, L, rd.x, rd.y, tol);
+    if (L.kranen) { const kr = hitCrane(visCranes(), rd.x, rd.y, tol); if (kr) return { kind: 'crane', k: kr, point: tp }; }
+    const ro = hitRoute(visRoutes(), routeEngine, L, rd.x, rd.y, tol);
     if (ro) return { kind: 'route', r: ro, point: tp };
     if (sv) return { kind: 'survey', s: sv, point: tp };
     const kh = hitKlic(store.data, L, rd.x, rd.y, tol);
@@ -981,6 +1066,7 @@ async function start() {
         if (n) k.naam += ` ${n + 1}`;
         stopCraneModes();
         L.kranen = true;
+        if (L.fase) k.fases = [L.fase];
         store.change(`${k.naam} geplaatst`, (d) => { d.kranen.push(k); });
         select({ kind: 'crane', id: k.id });
         status(`${k.naam} geplaatst – vul de lasttabel van de fabrikant in`);
@@ -1055,7 +1141,7 @@ async function start() {
         stopMeasure();
         const id = `m-${Date.now().toString(36)}`;
         L.handmatig.maatlijn = true;
-        store.change('Maatlijn geplaatst', (pd) => { pd.handmatig.push({ id, soort: 'maatlijn', geom: 'lijn', coords: pts, naam: '', offset: 1.0 }); });
+        store.change('Maatlijn geplaatst', (pd) => { pd.handmatig.push({ id, soort: 'maatlijn', geom: 'lijn', coords: pts, naam: '', offset: 1.0, ...(L.fase ? { fases: [L.fase] } : {}) }); });
         select({ kind: 'manual', id });
       },
       clear: () => { measure.start(); showMeasure(); },
@@ -1160,7 +1246,7 @@ async function start() {
         measure.showSnap(null);
         const id = `m-${Date.now().toString(36)}`;
         L.handmatig[d.soort] = true;
-        store.change(`${MANUAL_STYLE[d.soort].label} getekend`, (pd) => { pd.handmatig.push({ id, soort: d.soort, geom: d.geom, coords, naam: d.naam, ...d.extra }); });
+        store.change(`${MANUAL_STYLE[d.soort].label} getekend`, (pd) => { pd.handmatig.push({ id, soort: d.soort, geom: d.geom, coords, naam: d.naam, ...d.extra, ...(L.fase ? { fases: [L.fase] } : {}) }); });
         select({ kind: 'manual', id });
       },
       onCancel: () => { $('viewport').classList.remove('drawing'); measure.showSnap(null); },
@@ -1194,6 +1280,7 @@ async function start() {
     const e = { ...placing, x: Math.round(placing.x * 100) / 100, y: Math.round(placing.y * 100) / 100 };
     stopPlacing();
     L.elementLagen[e.laag] = true;
+    if (L.fase) e.fases = [L.fase];
     store.change(`${ELEMENTS[e.type].label} geplaatst`, (d) => { d.elementen.push(e); });
     select({ kind: 'element', id: e.id });
   }
@@ -1261,6 +1348,7 @@ async function start() {
         }
         if (!cars.length) { status('Geen BGT-parkeervakken in deze zone gevonden'); return; }
         L.elementLagen['Geparkeerde voertuigen (bezet)'] = true;
+        if (L.fase) for (const c of cars) c.fases = [L.fase];
         store.change(`${cars.length} parkeervakken bezet`, (d) => { d.elementen.push(...cars); });
         status(`${cars.length} auto's geplaatst in BGT-parkeervakken (laag "Geparkeerde voertuigen (bezet)")`);
       },
@@ -1359,7 +1447,7 @@ async function start() {
     }
     const p = terrainRD(ev);
     if (!p) return;
-    if (!kr) { const tp = terrain.intersectRay(raycaster.ray); kr = hitCrane(store.data.kranen, p[0], p[1], tp ? Math.max(0.5, 4 * mppAt(tp)) : 1); }
+    if (!kr) { const tp = terrain.intersectRay(raycaster.ray); kr = hitCrane(visCranes(), p[0], p[1], tp ? Math.max(0.5, 4 * mppAt(tp)) : 1); }
     if (!kr) return;
     ev.stopPropagation();
     craneDrag = { id: kr.id, ox: kr.x, oy: kr.y, sx: ev.clientX, sy: ev.clientY, start: p, moved: false };
@@ -1380,7 +1468,7 @@ async function start() {
       craneDragFrame = true;
       requestAnimationFrame(() => {
         craneDragFrame = false;
-        craneLayer.apply(store.data.kranen, L.kranen, craneDrag?.id ?? selectedCrane, null);
+        craneLayer.apply(visCranes(), L.kranen, craneDrag?.id ?? selectedCrane, null);
         status(`${k.naam}: ${fmtRD(k.x, k.y)} – loslaten om te plaatsen`, 0);
       });
     }
@@ -1481,7 +1569,7 @@ async function start() {
     if (!p) return;
     if (!drag.moved) { drag.moved = true; dragHidden = drag.o.id; terrain.redraw(L); }
     applyDrag(drag, p, ev.shiftKey);
-    userLayer.apply(store.data, L, selectedManual);
+    userLayer.apply(viewData(), L, selectedManual);
     handles.set(drag.o, true);
     status(`${shapeStatus(drag.o, drag.kind === 'vertex' ? drag.index - 1 : undefined)}${drag.o.soort === 'hekwerk' ? ' — Shift = vrij slepen' : ''}`, 0);
   });
@@ -1628,6 +1716,161 @@ async function start() {
   });
 
   // --- opslaan / openen
+  // ------------------------------------------------------------------ fase 6: export
+  const exp = { papier: 'A3' as Papier, schaal: 200, onderdeel: 'Bouwplaatsinrichting', status: 'Concept', ondergrondCad: true, bezig: false };
+  const vandaag = () => new Date().toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  let expDatum = vandaag();
+  const exportFrame = new THREE.Group();
+  viewer.scene.add(exportFrame);
+  const exportCenter = (): [number, number] => { const t = viewer.controls.target; const rd = frame.toRD(t.x, t.y, t.z); return [rd.x, rd.y]; };
+  function drawExportFrame() {
+    for (const c of [...exportFrame.children]) { exportFrame.remove(c); (c as THREE.Line).geometry?.dispose(); }
+    if (selection?.kind !== 'export') return;
+    const [cx, cy] = exportCenter(), m = kaartMeters(exp.papier, exp.schaal);
+    const pts = [[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]].map(([a, b]) => { const x = cx + (a * m.w) / 2, y = cy + (b * m.h) / 2; const l = frame.toLocal(x, y, (terrain.heightAt(x, y) ?? 0) + 0.5); return new THREE.Vector3(l.x, l.y, l.z); });
+    for (const col of ['#ffffff', '#d50000']) {
+      const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({ color: col, dashSize: col === '#ffffff' ? 1000 : 2, gapSize: col === '#ffffff' ? 0 : 1, depthTest: false }));
+      ln.computeLineDistances(); ln.renderOrder = 40; ln.raycast = () => {};
+      exportFrame.add(ln);
+    }
+  }
+  let lastFrameKey = '';
+  viewer.onFrame(() => {
+    const key = selection?.kind === 'export' ? JSON.stringify([exportCenter().map(Math.round), exp.papier, exp.schaal]) : '';
+    if (key !== lastFrameKey) { lastFrameKey = key; drawExportFrame(); }
+  });
+  function exportFeatures(ondergrond: boolean, tekst: number) {
+    const b = boundary();
+    const dp = designPlacement();
+    const routes = visRoutes().filter((r) => r.zichtbaar && r.legs.length && L.routes).map((r) => { const res = routeEngine.result(r); return { r, env: res.env, uitvoerbaar: res.sim.uitvoerbaar, botsingen: res.conflicts.length }; });
+    const bgt: { label: string; kleur: string; rings?: number[][][]; lines?: number[][][] }[] = [];
+    if (ondergrond) {
+      const byCls = new Map<string, { label: string; kleur: string; rings: number[][][]; lines: number[][][] }>();
+      const get = (cls: string) => { if (!byCls.has(cls)) { const st = CLASS_STYLES[cls]; byCls.set(cls, { label: st?.label ?? cls, kleur: st?.stroke ?? st?.fill ?? '#888888', rings: [], lines: [] }); } return byCls.get(cls)!; };
+      for (const p of terrain.polys) if (p.cls !== 'pand_bgt') for (const poly of p.polys) if (poly[0]) get(p.cls).rings.push(poly[0]);
+      for (const l of terrain.lines) get(l.cls).lines.push(...l.lines);
+      bgt.push(...byCls.values());
+    }
+    return collectFeatures({
+      elementen: store.data.elementen.filter(elVisible),
+      handmatig: viewData().handmatig.filter((m) => L.handmatig[m.soort] !== false),
+      routes,
+      kranen: L.kranen ? visCranes().filter((k) => k.zichtbaar) : [],
+      grens: b.lijnen.length ? { lijnen: b.lijnen, bron: b.bron === 'ingemeten' ? 'Perceelgrens (ingemeten)' : 'Perceelgrens (BRK, indicatief)' } : null,
+      ontwerp: design && dp && L.ontwerp ? placeRings(dp, design.model.contour).filter((r) => r.length > 3) : null,
+      ondergrond: ondergrond ? { gebouwen: (buildings?.items ?? []).filter((q) => q.rec.footprint[0]).map((q) => ({ id: q.rec.bagId, ring: q.rec.footprint[0] })), bgt } : undefined,
+      tekst,
+    });
+  }
+  const faseNaam = () => (L.fase ? fasen().find((f) => f.id === L.fase)?.naam ?? L.fase : 'Alle fases');
+  const datumCode = () => { const d = new Date(); return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`; };
+  const slug = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  function download(name: string, blob: Blob) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  }
+  /** Hulpgrafiek (grepen, tekengereedschap, kader, voertuig) tijdelijk verbergen. */
+  async function zonderHulp<T>(fn: () => Promise<T>): Promise<T> {
+    const groups = [exportFrame, routeHandles.group, handles.group, elHandles.group, ghostLayer.group, drawTool.group, measure.group, routeLayer.group];
+    const prev = groups.map((g) => g.visible);
+    groups.forEach((g) => (g.visible = false));
+    try { return await fn(); } finally { groups.forEach((g, i) => (g.visible = prev[i])); }
+  }
+  async function exportPdf() {
+    if (exp.bezig) return;
+    exp.bezig = true;
+    try {
+      const [cx, cy] = exportCenter();
+      const Lp = layout(exp.papier);
+      const dpi = exp.papier === 'A3' ? 200 : 150;
+      const W = Math.round((Lp.kaart.w / 25.4) * dpi), H = Math.round((Lp.kaart.h / 25.4) * dpi);
+      const m = kaartMeters(exp.papier, exp.schaal);
+      const loc = frame.toLocal(cx, cy, 0);
+      status(`Kaart renderen (${W} × ${H} px)…`, 0);
+      const canvasImg = await zonderHulp(() => renderTiled(viewer.renderer, viewer.scene, topCamera(loc.x, loc.z, m.w, m.h), W, H, 2048, (f) => status(`Kaart renderen… ${Math.round(f * 100)}%`, 0)));
+      const feats = exportFeatures(false, exp.schaal / 1000 * 2.2);
+      const legenda = legendFrom(feats).filter((q) => q.groep !== 'Teksten');
+      const bronnen = data.manifest.bronnen.filter((b) => b.status === 'ok').map((b) => `${b.naam.split(' – ')[0].split(' (')[0]} (${(b.opgehaald ?? '').slice(0, 10)})`);
+      const P = store.data.project;
+      const doc = makePdf({
+        papier: exp.papier, schaal: exp.schaal, kaart: { dataUrl: canvasImg.toDataURL('image/jpeg', 0.9), formaat: 'JPEG' },
+        titel: { project: P.naam || PROJECT.naam || 'Sporthal Latourpad 16, Dordrecht', nummer: P.nummer, onderdeel: exp.onderdeel, fase: faseNaam(), datum: expDatum, getekendDoor: P.getekendDoor, status: exp.status },
+        legenda, ondergrond: L.plattegrond ? 'kadastrale plattegrond (BRK) en BGT' : `${L.luchtfoto ? 'luchtfoto (PDOK)' : 'BGT'}${L.gebouwen ? ', 3D BAG' : ''}`,
+        bronnen, disclaimer: 'Indicatieve tekening op basis van openbare registraties en eigen invoer; BRK-perceelgrenzen zijn indicatief. Maten en hoogtes ter plaatse controleren. Draaicirkels en kraanbereik indicatief (geen vervanging van gecertificeerde software of de opgave van de leverancier).',
+        middenRD: [cx, cy],
+      });
+      download(`bouwplaatstekening-${slug(faseNaam())}-${exp.papier}-1-${exp.schaal}-${datumCode()}.pdf`, doc.output('blob'));
+      status(`PDF ${exp.papier} 1:${exp.schaal} gemaakt (download)`);
+    } catch (e) {
+      status(`PDF maken mislukt: ${(e as Error).message}`);
+      console.error(e);
+    } finally { exp.bezig = false; }
+  }
+  function exportDxf() {
+    const feats = exportFeatures(exp.ondergrondCad, exp.schaal / 1000 * 2.2);
+    download(`bouwplaatsinrichting-${slug(faseNaam())}-${datumCode()}.dxf`, new Blob([toDxf(feats, { titel: `${store.data.project.naam || 'Bouwplaatsinrichting'} – ${faseNaam()}` })], { type: 'application/dxf' }));
+    status(`DXF gemaakt: ${feats.length} objecten in ${new Set(feats.map((f) => f.laag)).size} lagen (RD, meter)`);
+  }
+  function exportGeoJson() {
+    const feats = exportFeatures(exp.ondergrondCad, 0.5);
+    const gj = toGeoJSON(feats, { project: store.data.project, fase: faseNaam(), gemaakt: new Date().toISOString(), crs: 'EPSG:28992 (RD New)' });
+    download(`bouwplaatsinrichting-${slug(faseNaam())}-${datumCode()}.geojson`, new Blob([JSON.stringify(gj)], { type: 'application/geo+json' }));
+    status(`GeoJSON gemaakt: ${feats.length} objecten (RD New, EPSG:28992)`);
+  }
+  async function exportPng() {
+    if (exp.bezig) return;
+    exp.bezig = true;
+    try {
+      const c = viewer.renderer.domElement;
+      const W = c.clientWidth * 2, H = c.clientHeight * 2;
+      const img = await zonderHulp(() => renderTiled(viewer.renderer, viewer.scene, viewer.camera as any, W, H));
+      const out = document.createElement('canvas');
+      const band = 56;
+      out.width = W; out.height = H + band;
+      const g = out.getContext('2d')!;
+      g.drawImage(img, 0, 0);
+      g.fillStyle = '#23272b'; g.fillRect(0, H, W, band);
+      g.fillStyle = '#ffffff'; g.font = '600 26px system-ui, sans-serif';
+      g.fillText(`${store.data.project.naam || 'Sporthal Latourpad 16, Dordrecht'} – ${exp.onderdeel} – ${faseNaam()}`, 20, H + 36);
+      g.font = '20px system-ui, sans-serif'; g.textAlign = 'right'; g.fillStyle = '#c9cdd2';
+      g.fillText(`${viewer.mode === '2d' ? '2D-bovenaanzicht' : '3D-aanzicht'} · ${vandaag()} · indicatief`, W - 20, H + 36);
+      out.toBlob((b) => { if (b) download(`aanzicht-${slug(faseNaam())}-${datumCode()}.png`, b); }, 'image/png');
+      status('PNG van het huidige beeld gemaakt (download)');
+    } finally { exp.bezig = false; }
+  }
+  function showExport() {
+    const P = store.data.project;
+    const inp = (v: string, on: (t: string) => void, ph = '') => { const i = h('input', { type: 'text', value: v, placeholder: ph }) as HTMLInputElement; i.addEventListener('keydown', (ev) => ev.stopPropagation()); i.onchange = () => on(i.value.trim()); return i; };
+    const sel = <T extends string | number>(opts: [T, string][], cur: T, on: (v: T) => void) => { const s0 = h('select', {}, ...opts.map(([v, t]) => h('option', { value: String(v), selected: v === cur }, t))) as HTMLSelectElement; s0.onchange = () => { const o = opts.find(([v]) => String(v) === s0.value); if (o) on(o[0]); }; return s0; };
+    const m = kaartMeters(exp.papier, exp.schaal);
+    const projVeld = (k: 'naam' | 'nummer' | 'getekendDoor') => inp(P[k], (t) => store.change('Projectgegevens aangepast', (d) => { d.project[k] = t; }));
+    info.open('Exporteren', 'Bouwplaatstekening, CAD/GIS en afbeeldingen',
+      h('fieldset', {}, h('legend', {}, 'PDF-tekening op schaal'),
+        h('div', { class: 'frow' }, 'Formaat (liggend)', sel<Papier>([['A3', 'A3'], ['A1', 'A1']], exp.papier, (v) => { exp.papier = v; refreshInfo(); })),
+        h('div', { class: 'frow' }, 'Schaal', sel<number>(SCHALEN.map((n) => [n, `1:${n}`]), exp.schaal, (v) => { exp.schaal = v; refreshInfo(); })),
+        h('div', { class: 'note', style: { marginLeft: 0 } }, `Kaartvlak ${m.w.toFixed(0)} × ${m.h.toFixed(0)} m. Het rode kader op de kaart volgt het midden van het beeld: verschuif de kaart om het kader te plaatsen. Bouwfase: ${faseNaam()} (kies in het lagenpaneel). Ondergrond en lagen zoals nu op het scherm.`),
+        h('div', { class: 'btnrow' }, h('button', { onclick: () => { const dp0 = designPlacement(); const ring = (design && dp0 ? placeRings(dp0, design.model.contour)[0] : null) ?? buildings?.sporthal?.rec.footprint[0]; const c = ring ? [ring.reduce((a, q) => a + q[0], 0) / ring.length, ring.reduce((a, q) => a + q[1], 0) / ring.length] : null; if (c) { const l = frame.toLocal(c[0], c[1], 0); viewer.focus(new THREE.Vector3(l.x, terrain.heightAt(c[0], c[1]) ?? 0, l.z), Math.max(m.w, m.h) * 0.6); } } }, 'Kader op het nieuwe pand'))),
+      h('fieldset', {}, h('legend', {}, 'Titelblok'),
+        h('div', { class: 'frow' }, 'Project', projVeld('naam')),
+        h('div', { class: 'frow' }, 'Projectnummer', projVeld('nummer')),
+        h('div', { class: 'frow' }, 'Onderdeel', inp(exp.onderdeel, (t) => { exp.onderdeel = t || 'Bouwplaatsinrichting'; })),
+        h('div', { class: 'frow' }, 'Datum', inp(expDatum, (t) => { expDatum = t || vandaag(); })),
+        h('div', { class: 'frow' }, 'Getekend door', projVeld('getekendDoor')),
+        h('div', { class: 'frow' }, 'Status', sel<string>([['Concept', 'Concept'], ['Ter bespreking', 'Ter bespreking'], ['Definitief', 'Definitief'], ['Vergunningaanvraag', 'Vergunningaanvraag']], exp.status, (v) => { exp.status = v; }))),
+      h('div', { class: 'btnrow' }, h('button', { class: 'primary', onclick: () => void exportPdf() }, `📄 PDF ${exp.papier} 1:${exp.schaal} maken`)),
+      h('fieldset', {}, h('legend', {}, 'CAD en GIS (RD New, meter)'),
+        h('label', { class: 'lrow' }, (() => { const c = h('input', { type: 'checkbox', checked: exp.ondergrondCad }) as HTMLInputElement; c.onchange = () => { exp.ondergrondCad = c.checked; }; return c; })(), 'Ondergrond meenemen (gebouwen BAG + BGT)'),
+        h('div', { class: 'btnrow' }, h('button', { onclick: exportDxf }, 'DXF (AutoCAD/BricsCAD)'), h('button', { onclick: exportGeoJson }, 'GeoJSON (QGIS e.d.)')),
+        h('div', { class: 'note', style: { marginLeft: 0 } }, 'Eén laag per soort (bv. BOUWPLAATS_SCHAFTKEET_KANTOORUNIT, EIGEN_BOUWHEKKEN, KRAAN_ZWENKCIRKEL_GIEK, ROUTE_OMHULLENDE). DXF R12, zonder blokken; teksten op tekenhoogte voor de gekozen schaal.')),
+      h('fieldset', {}, h('legend', {}, 'Afbeelding'),
+        h('div', { class: 'btnrow' }, h('button', { onclick: () => void exportPng() }, '🖼 PNG van het huidige beeld (2× resolutie)')),
+        h('div', { class: 'note', style: { marginLeft: 0 } }, 'Stel eerst het gewenste 3D-standpunt in; grepen en hulplijnen worden weggelaten.')),
+    );
+  }
+
   const saveProject = () => {
     autosave();
     const blob = new Blob([store.serialize()], { type: 'application/json' });
@@ -1670,6 +1913,7 @@ async function start() {
   try { if (localStorage.getItem('bouwplaats-sporthal:lagen-paneel') === 'dicht') $('layers').hidden = true; } catch { /* */ }
   $('btnLayers').classList.toggle('active', !$('layers').hidden);
   $('btnSave').onclick = saveProject;
+  $('btnExport').onclick = () => { if (viewer.mode !== '2d') viewer.to2D(); select({ kind: 'export' }); };
   $('btnOpen').onclick = () => fileOpen.click();
   btnUndo.onclick = () => store.undo();
   btnRedo.onclick = () => store.redo();
@@ -1684,9 +1928,13 @@ async function start() {
   };
   viewer.onModeChange(syncMode);
   syncMode(viewer.mode);
+  const schaalKeus = $('schaalKeus') as HTMLSelectElement;
+  schaalKeus.onchange = () => { if (schaalKeus.value) viewer.setScale(Number(schaalKeus.value)); };
   viewer.onFrame(() => {
     if (viewer.mode !== '2d') return;
     const mpp = viewer.metersPerPixel();
+    const n = Math.round(mpp / 0.0002646);
+    if (schaalKeus.value && Math.abs(n - Number(schaalKeus.value)) > 1 && document.activeElement !== schaalKeus) schaalKeus.value = '';
     const target = mpp * 120;
     const p10 = 10 ** Math.floor(Math.log10(target));
     const nice = [1, 2, 5, 10].map((k) => k * p10).filter((v) => v <= target).pop() ?? p10;
@@ -1750,6 +1998,7 @@ async function start() {
     else if (key === 'm') (measure.active ? stopMeasure() : startMeasure());
     else if (key === 'k') { L.plattegrond = !L.plattegrond; if (L.plattegrond) viewer.to2D(); terrain.redraw(L); applyScene(); renderPanel(); autosave(); status(L.plattegrond ? 'Plattegrond (kadasterkaart)' : 'Luchtfoto / 3D'); }
     else if (key === 'b') openModal(sourcesContent(m));
+    else if (key === 'e') $('btnExport').click();
     else if (key === 'l') toggleLayers();
     else if (key === 's') {
       const order: SporthalMode[] = ['normaal', 'transparant', 'verborgen'];

@@ -118,6 +118,13 @@ export class Viewer {
     this.renderer.render(this.scene, this.camera);
   }
 
+  /** Zet de 2D-weergave op een vaste schermschaal 1:n (96 dpi, 1 px = 0,2646 mm). */
+  setScale(n: number) {
+    const mpp = (n * 0.0254) / 96;
+    this.orthoCam.zoom = (this.orthoCam.top - this.orthoCam.bottom) / (mpp * Math.max(1, this.container.clientHeight));
+    this.orthoCam.updateProjectionMatrix();
+  }
+
   /** Meters per schermpixel in de 2D-weergave. */
   metersPerPixel(): number {
     return (this.orthoCam.top - this.orthoCam.bottom) / this.orthoCam.zoom / Math.max(1, this.container.clientHeight);

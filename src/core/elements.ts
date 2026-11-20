@@ -49,6 +49,8 @@ export const ELEMENTS: Record<ElementType, ElementSpec> = {
 
 export interface Element {
   id: string;
+  /** Bouwfases waarin dit element staat (leeg = alle fases). */
+  fases?: string[];
   type: ElementType;
   naam: string;
   /** Eigen laag (aan/uit in het lagenpaneel). */

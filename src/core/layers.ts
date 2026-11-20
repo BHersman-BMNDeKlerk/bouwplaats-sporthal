@@ -28,6 +28,8 @@ export interface LayerState {
   routes: boolean;
   routeSporen: boolean;
   routeDebug: boolean;
+  /** Actieve bouwfase ('' = alles). */
+  fase: string;
   /** Weergave hoogteverschillen maaiveld (1 = NAP, 0 = alles vlak). */
   hoogteFactor: number;
   /** Fase 5 */
@@ -91,6 +93,7 @@ export function defaultLayers(): LayerState {
     routes: true,
     routeSporen: true,
     routeDebug: false,
+    fase: '',
     hoogteFactor: 1,
     kranen: true,
     ontwerp: true,
