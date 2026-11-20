@@ -83,3 +83,30 @@ describe('Start of eind op een obstakel', () => {
     expect(r.poses[0].phi).toBe(0);
   });
 });
+
+import { smooth } from '../src/vehicles/planner';
+import { simplifyLine } from '../src/vehicles/routes';
+describe('Geen zigzag en bewerkbare lijnen', () => {
+  const flips = (ps: { delta: number }[]) => { let f = 0; for (let i = 1; i < ps.length; i++) if (Math.sign(ps[i].delta) !== Math.sign(ps[i - 1].delta) && Math.abs(ps[i].delta) > 0.02 && Math.abs(ps[i - 1].delta) > 0.02) f++; return f; };
+  it('haakse bocht: stuurt één keer in en uit, rechte stukken met stuur recht', () => {
+    const obs = [box('zuid', -10, -14, 60, -4), box('blok', -10, 4, 32, 40), box('oost', 40, -4, 60, 40)];
+    const r = plan({ v: veh('bakwagen-10'), start: { x: 0, y: 0, theta: 0 }, goal: { x: 36, y: 25, heading: Math.PI / 2 }, obstacles: obs, soft: [] });
+    expect(r.ok).toBe(true);
+    expect(flips(r.poses)).toBeLessThanOrEqual(1);
+    // eerste 10 m rechtdoor: stuur (vrijwel) recht
+    const begin = r.poses.filter((p) => p.x < 10);
+    expect(Math.max(...begin.map((p) => Math.abs(p.delta)))).toBeLessThan(0.05);
+  });
+  it('gladstrijken houdt begin en eind vast', () => {
+    const z: [number, number][] = [...Array(21)].map((_, i) => [i, i % 2 ? 0.3 : -0.3]);
+    const s = smooth(z, 100);
+    expect(s[0]).toEqual(z[0]);
+    expect(s[20]).toEqual(z[20]);
+    expect(Math.max(...s.slice(2, 19).map((p) => Math.abs(p[1])))).toBeLessThan(0.15);
+  });
+  it('vereenvoudigen tot bewerkbare punten', () => {
+    const l: [number, number][] = [...Array(41)].map((_, i) => [i * 0.5, 0]);
+    l.push([20, 10]);
+    expect(simplifyLine(l, 0.15)).toEqual([[0, 0], [20, 0], [20, 10]]);
+  });
+});

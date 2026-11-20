@@ -34,13 +34,14 @@ import { SnapIndex, type MeasurePoint } from './core/measure';
 import { BOUWHEK, clampGate, nearestPanel, panels, snapFrom, totalLength, type Pt } from './core/polyline';
 import { editCodes, importBoundary, importDxf, importKlic, importPoints, type ImportContext } from './ui/importDialogs';
 import { themaStyle } from './data/klic';
-import { RouteEngine, newRoute, type Route } from './vehicles/routes';
+import { RouteEngine, newRoute, simplifyLine, type Route } from './vehicles/routes';
 import { VEHICLES } from './vehicles/vehicles';
 import { bboxOf, type RouteObstacle } from './vehicles/sweep';
 import { manualObstacles } from './vehicles/obstacles';
 import type { PlanInput, PlanResult } from './vehicles/planner';
 import { trailerAxle, type Leg, type Sample } from './vehicles/kinematics';
 import { RouteLayer, hitRoute, routesOverlay, ROUTE_KLEUR } from './scene/routeLayer';
+import { RouteHandles, type RouteHandle } from './scene/routeHandles';
 import { routePanel } from './ui/routePanel';
 import { HEIGHT } from './core/flatten';
 import { canLift, craneWarnings, newMK88, newMobileCrane, newTowerCrane, overlaps, type Crane, type CraneEnv, type CraneWarning, type LiftCheck } from './cranes/cranes';
@@ -222,6 +223,9 @@ async function start() {
   });
   const routeLayer = new RouteLayer(frame, (x, y) => terrain.heightAt(x, y));
   viewer.scene.add(routeLayer.group);
+  const routeHandles = new RouteHandles(frame, (x, y) => terrain.heightAt(x, y));
+  viewer.scene.add(routeHandles.group);
+  let addStopFor: string | null = null;
   let selectedRoute: string | null = null;
   let routePos = 0, routePlaying = false, routeDebug = false, lastFrameT = 0;
   let routePanelUpdate: ((s: Sample | null, p: number) => void) | null = null;
@@ -294,9 +298,16 @@ async function start() {
       if (!c || !inBB([p.bbox.xmin, p.bbox.ymin, p.bbox.xmax, p.bbox.ymax])) continue;
       for (const poly of p.polys) if (poly[0]) soft.push({ ring: poly[0], cost: c });
     }
-    return { v, start: { x: sx, y: sy, theta: st }, goal: { x: ex, y: ey, heading: eh }, obstacles: routeObstacles().filter((o) => inBB(o.bbox)), soft, marge: plan.marge, achteruit: plan.achteruit, kronenNegeren: plan.kronen === false, maxTijdMs: 15000 };
+    return { v, start: { x: sx, y: sy, theta: st }, goal: { x: ex, y: ey, heading: eh }, obstacles: routeObstacles().filter((o) => inBB(o.bbox)), soft, marge: plan.marge, achteruit: plan.achteruit, kronenNegeren: plan.kronen === false, afwijking: plan.afwijking ?? 1.0, maxTijdMs: 15000 };
   }
   let planning = false;
+  if (import.meta.env.DEV) (window as any).__routes = () => store.data.routes;
+  if (import.meta.env.DEV) (window as any).__toScreen = (x: number, y: number) => {
+    const l = frame.toLocal(x, y, terrain.heightAt(x, y) ?? 0);
+    const v = new THREE.Vector3(l.x, l.y, l.z).project(viewer.camera);
+    const r = canvas.getBoundingClientRect();
+    return [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height];
+  };
   if (import.meta.env.DEV) (window as any).__planInput = (v: any, plan: any) => planInput(v, plan);
   /** Plan (eventueel via tussenstops) en schrijf het resultaat in de route. */
   async function planRoute(routeId: string | null, v: Route['voertuig'], plan: NonNullable<Route['plan']>): Promise<boolean> {
@@ -619,6 +630,7 @@ async function start() {
   updateUndo();
   store.onChange((_p, reden) => {
     rebuildSnap();
+    if (selectedRoute) routeHandles.set(store.data.routes.find((q) => q.id === selectedRoute) ?? null);
     if (selectedManual) handles.set(store.data.handmatig.find((q) => q.id === selectedManual) ?? null);
     if (selectedElement) {
       const e = store.data.elementen.find((q) => q.id === selectedElement) ?? null;
@@ -654,6 +666,7 @@ async function start() {
     if (prevCrane !== selectedCrane) { if (s?.kind !== 'lift') liftMarker = null; applyScene(); }
     const prevRoute = selectedRoute;
     selectedRoute = s?.kind === 'route' ? s.id : null;
+    routeHandles.set(selectedRoute ? store.data.routes.find((q) => q.id === selectedRoute) ?? null : null);
     if (prevRoute !== selectedRoute) {
       routePlaying = false;
       if (selectedRoute) routePos = 0;
@@ -735,8 +748,12 @@ async function start() {
       const p = routePanel(store, r, res, routePos, {
         addLeg: (richting) => addRouteLeg(r.id, richting),
         removeLastLeg: () => store.change('Routedeel verwijderd', (d) => { const x = d.routes.find((q) => q.id === r.id); if (x) { x.legs.pop(); x.pad = undefined; x.plan = undefined; } }),
-        replan: (marge, achteruit, kronen) => { void recalcRoute(r.id, { marge, achteruit, ...(kronen === undefined ? {} : { kronen }) }); },
+        replan: (marge, achteruit, kronen, afwijking) => { void recalcRoute(r.id, { marge, achteruit, ...(kronen === undefined ? {} : { kronen }), ...(afwijking === undefined ? {} : { afwijking }) }); },
         recalc: () => { void recalcRoute(r.id); },
+        toggleLeg: (i) => store.change('Rijrichting van een deel omgedraaid', (d) => { const x = d.routes.find((q) => q.id === r.id); if (x?.legs[i]) { x.legs[i].richting = x.legs[i].richting === 'vooruit' ? 'achteruit' : 'vooruit'; x.pad = undefined; x.plan = undefined; } }),
+        removeLeg: (i) => store.change('Routedeel verwijderd', (d) => { const x = d.routes.find((q) => q.id === r.id); if (x) { x.legs.splice(i, 1); x.pad = undefined; x.plan = undefined; } }),
+        toEditable: () => store.change('Route omgezet naar bewerkbare lijnen', (d) => { const x = d.routes.find((q) => q.id === r.id); if (x) { x.legs = x.legs.map((l) => ({ richting: l.richting, punten: simplifyLine(l.punten, 0.15) })); x.pad = undefined; x.plan = undefined; } }),
+        addStop: () => { addStopFor = r.id; $('viewport').classList.add('drawing'); status('Klik op de route waar een tussenstop moet komen (het voertuig staat daar even stil, bv. om te steken) · Esc = annuleren', 0); },
         remove: () => { store.change('Route verwijderd', (d) => { d.routes = d.routes.filter((q) => q.id !== r.id); }); select(null); },
         setPos: (v) => { routePos = v; routePlaying = false; showRoutePos(); },
         togglePlay: () => { if (!routePlaying && routePos >= res.sim.lengte - 0.01) routePos = 0; routePlaying = !routePlaying; return routePlaying; },
@@ -943,6 +960,15 @@ async function start() {
     const hit = pick(ev);
     if (placing) {
       if (hit) placeElement();
+      return;
+    }
+    if (addStopFor) {
+      if (!hit) return;
+      const rd = frame.toRD(hit.point.x, hit.point.y, hit.point.z);
+      const id = addStopFor;
+      addStopFor = null;
+      $('viewport').classList.remove('drawing');
+      addStopAt(id, rd.x, rd.y);
       return;
     }
     if (cranePlace || craneMove || liftMode) {
@@ -1478,6 +1504,92 @@ async function start() {
     status(shapeStatus(store.data.handmatig.find((q) => q.id === d.o.id)!));
   });
   // dubbelklik op een hoekpunt = verwijderen
+  // --- routes bewerken: grepen slepen / dubbelklik = punt of tussenstop weg
+  let rDrag: { h: RouteHandle; id: string; moved: boolean; sx: number; sy: number; p: Pt | null } | null = null;
+  $('viewport').addEventListener('pointerdown', (ev) => {
+    if (ev.button !== 0 || drawTool.active || measure.active || !selectedRoute || addStopFor) return;
+    const hh = routeHandles.pick(rayAt(ev));
+    if (!hh) return;
+    ev.stopPropagation();
+    rDrag = { h: hh, id: selectedRoute, moved: false, sx: ev.clientX, sy: ev.clientY, p: null };
+    viewer.controls.enabled = false;
+  }, { capture: true });
+  window.addEventListener('pointermove', (ev) => {
+    if (!rDrag) return;
+    if (!rDrag.moved && Math.hypot(ev.clientX - rDrag.sx, ev.clientY - rDrag.sy) < 4) return;
+    const p = terrainRD(ev);
+    if (!p) return;
+    rDrag.moved = true; rDrag.p = p;
+    routeHandles.preview(rDrag.h, p[0], p[1]);
+    status('Loslaten om de route aan te passen', 0);
+  });
+  window.addEventListener('pointerup', () => {
+    if (!rDrag) return;
+    const d = rDrag;
+    rDrag = null;
+    viewer.controls.enabled = true;
+    if (!d.moved || !d.p) return;
+    applyRouteHandle(d.id, d.h, d.p);
+  });
+  function applyRouteHandle(id: string, hh: RouteHandle, p: Pt) {
+    const r = store.data.routes.find((q) => q.id === id);
+    if (!r) return;
+    const P: [number, number] = [Math.round(p[0] * 1000) / 1000, Math.round(p[1] * 1000) / 1000];
+    if (hh.type === 'v' || hh.type === 'mid') {
+      store.change(hh.type === 'v' ? 'Routepunt verplaatst' : 'Routepunt toegevoegd', (dd) => {
+        const x = dd.routes.find((q) => q.id === id);
+        const l = x?.legs[hh.leg];
+        if (!x || !l) return;
+        if (hh.type === 'v') l.punten[hh.idx] = P; else l.punten.splice(hh.idx, 0, P);
+        x.pad = undefined;
+      });
+      return;
+    }
+    if (!r.plan) return;
+    const plan = structuredClone(r.plan);
+    const ang = (o: (number | null)[]) => Math.atan2(P[1] - (o[1] as number), P[0] - (o[0] as number));
+    if (hh.type === 'S') plan.start = [P[0], P[1], plan.start[2]];
+    else if (hh.type === 'Sdir') plan.start = [plan.start[0], plan.start[1], ang(plan.start)];
+    else if (hh.type === 'E') plan.eind = [P[0], P[1], plan.eind[2]];
+    else if (hh.type === 'Edir') plan.eind = [plan.eind[0], plan.eind[1], ang(plan.eind)];
+    else if (hh.type === 'T' && plan.tussen?.[hh.idx]) plan.tussen[hh.idx] = [P[0], P[1], plan.tussen[hh.idx][2]];
+    else if (hh.type === 'Tdir' && plan.tussen?.[hh.idx]) plan.tussen[hh.idx] = [plan.tussen[hh.idx][0], plan.tussen[hh.idx][1], ang(plan.tussen[hh.idx])];
+    void planRoute(id, r.voertuig, plan);
+  }
+  function addStopAt(id: string, x: number, y: number) {
+    const r = store.data.routes.find((q) => q.id === id);
+    if (!r) return;
+    const plan = structuredClone(r.plan ?? planFromRoute(r));
+    const ss = routeEngine.result(r).sim.samples;
+    // positie langs de route bepaalt de volgorde; richting = stand van het voertuig daar
+    let bi = 0, bd = Infinity;
+    ss.forEach((s, i) => { const d = Math.hypot(s.x - x, s.y - y); if (d < bd) { bd = d; bi = i; } });
+    const s = ss[bi];
+    const artic = r.voertuig.soort === 'oplegger';
+    const stop: [number, number, number] = [x, y, artic ? s.phi : s.theta];
+    const sOf = (p: number[]) => { let j = 0, dd = Infinity; ss.forEach((q, i) => { const d = Math.hypot(q.x - p[0], q.y - p[1]); if (d < dd) { dd = d; j = i; } }); return j; };
+    const list = [...(plan.tussen ?? []), stop].sort((a, b) => sOf(a) - sOf(b));
+    plan.tussen = list;
+    status(`Tussenstop toegevoegd – route wordt opnieuw berekend`, 0);
+    void planRoute(id, r.voertuig, plan);
+  }
+  canvas.addEventListener('dblclick', (ev) => {
+    if (drawTool.active || !selectedRoute) return;
+    const hh = routeHandles.pick(rayAt(ev));
+    if (!hh) return;
+    const r = store.data.routes.find((q) => q.id === selectedRoute);
+    if (!r) return;
+    if (hh.type === 'v') {
+      if ((r.legs[hh.leg]?.punten.length ?? 0) <= 2) { status('Een deel heeft minimaal 2 punten – verwijder het deel in het paneel'); return; }
+      store.change('Routepunt verwijderd', (d) => { const x = d.routes.find((q) => q.id === r.id); if (x) { x.legs[hh.leg].punten.splice(hh.idx, 1); x.pad = undefined; } });
+    } else if (hh.type === 'T' && r.plan?.tussen) {
+      const plan = structuredClone(r.plan);
+      plan.tussen!.splice(hh.idx, 1);
+      void planRoute(r.id, r.voertuig, plan);
+    }
+  });
+  viewer.onFrame(() => { if (routeHandles.route) routeHandles.scale(mppAt(viewer.controls.target)); });
+
   canvas.addEventListener('dblclick', (ev) => {
     if (drawTool.active || !selectedManual) return;
     const h0 = handles.pick(rayAt(ev));
@@ -1594,6 +1706,7 @@ async function start() {
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     const ctrl = ev.ctrlKey || ev.metaKey;
     const key = ev.key.toLowerCase();
+    if (addStopFor && ev.key === 'Escape') { ev.preventDefault(); addStopFor = null; $('viewport').classList.remove('drawing'); status('Gestopt'); return; }
     if ((cranePlace || craneMove || liftMode) && ev.key === 'Escape') { ev.preventDefault(); stopCraneModes(); status('Gestopt'); return; }
     if (placing) {
       if (ev.key === 'Escape') { ev.preventDefault(); stopPlacing(); status('Plaatsen geannuleerd'); return; }

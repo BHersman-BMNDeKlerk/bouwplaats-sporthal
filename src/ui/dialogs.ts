@@ -94,6 +94,13 @@ export function helpContent(): Node {
     <li><b>⚡ Herberekenen – obstakels vermijden</b> (bovenaan het routepaneel): werkt voor elke route, ook zelf getekend en met
       meerdere rijdelen. Begin, eind en de wisselpunten tussen de rijdelen blijven staan; daartussen zoekt de app een botsingsvrije weg.
       Ligt een van die punten op een obstakel, dan schuift hij naar de dichtstbijzijnde vrije plek. Alle routes tegelijk: lagenpaneel → Routes.</li>
+    <li><b>Route bewerken</b> (route aanklikken): bij een getekende route sleep je elk punt, sleep je een wit bolletje om een punt
+      toe te voegen en dubbelklik je op een punt om het weg te halen; ⇄ en ✕ in de tabel draaien de rijrichting van een deel om of
+      verwijderen het. Bij een berekende route sleep je S, T (tussenstop) en E en de blokjes voor de rijrichting; de route wordt direct
+      opnieuw berekend. <i>+ Tussenstop</i> voegt een stoppunt toe (bv. om te steken); <i>Omzetten naar bewerkbare lijnen</i> maakt
+      er een getekende route van.</li>
+    <li>Bij het berekenen mag de wagen afwijken van de wisselpunten en het eind (standaard 1,0 m, instelbaar), bijvoorbeeld iets verder
+      doorsteken om de bocht te halen. Het pad wordt gladgestreken zodat de wagen op rechte stukken niet zigzagt.</li>
     <li>Scherpe hoeken in een zelf getekende lijn worden afgerond met de kleinst rijdbare straal (zoals een chauffeur de bocht neemt).</li>
     <li>Bouwhekken zijn een obstakel, poorten niet. Ook muren, hekken, hagen en water uit de BGT tellen mee.</li>
     <li>Kies een voertuig en teken de lijn van de <b>vooras</b> (klik punten, dubbelklik of Enter = klaar). Een nieuw deel

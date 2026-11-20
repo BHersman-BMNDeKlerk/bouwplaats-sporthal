@@ -98,7 +98,9 @@ Verplichte tests (`tests/sweptpath.test.ts`):
 (`src/vehicles/planner.ts`, draait in een Web Worker) zoekt een botsingsvrije route met het voertuigmodel, inclusief
 begrensde stuursnelheid, steken en een instelbare vrije ruimte rondom. Trottoir en groen kosten extra. Tests: `tests/planner.test.ts`.
 **⚡ Herberekenen – obstakels vermijden** werkt voor elke route (ook getekend, met meerdere rijdelen: de wisselpunten worden
-tussenstops) en voor alle routes tegelijk vanuit het lagenpaneel.
+tussenstops) en voor alle routes tegelijk vanuit het lagenpaneel. Elke route is na het aanmaken te bewerken (punten, tussenstops,
+start/eind en rijrichting slepen). Het berekende pad wordt gladgestreken en opnieuw nagereden (geen zigzag); wisselpunten en het
+eind mogen binnen een instelbare afstand (standaard 1,0 m) verschuiven.
 
 > Indicatief hulpmiddel – geen vervanging van gecertificeerde software zoals AutoTURN of Vehicle Tracking.
 

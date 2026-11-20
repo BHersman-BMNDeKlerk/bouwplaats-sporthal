@@ -12,7 +12,7 @@
  * gecontroleerd worden.
  */
 import { effectiveMaxSteer, type VehicleSpec } from './vehicles';
-import { referencePoint, step, trailerAxle, type Leg, type Pose } from './kinematics';
+import { referencePoint, simulate, step, trailerAxle, type Leg, type Pose } from './kinematics';
 import type { RouteObstacle } from './sweep';
 
 export interface PlanInput {
@@ -32,6 +32,10 @@ export interface PlanInput {
   achteruit?: boolean;
   /** Boomkronen negeren (alleen stammen zijn obstakel) – route vraagt dan snoeiwerk. */
   kronenNegeren?: boolean;
+  /** Toegestane afwijking van het opgegeven eindpunt (m), bv. iets verder doorsteken. Standaard 0,75 m. */
+  afwijking?: number;
+  /** Pad gladstrijken en opnieuw narijden (standaard aan). */
+  verfijnen?: boolean;
 }
 export interface PlanResult {
   ok: boolean;
@@ -316,7 +320,7 @@ export function plan(inp: PlanInput, grid?: Grid): PlanResult {
   const W = 1.3;
   const sr0 = refOf(start);
   open.push(W * hAt(sr0[0], sr0[1]), { p: start, g: 0, dir: 1, steer: 0, parent: null });
-  const tolPos = 0.75, tolAng = (10 * Math.PI) / 180;
+  const tolPos = Math.max(0.3, inp.afwijking ?? 0.75), tolAng = ((8 + 6 * tolPos) * Math.PI) / 180;
   const maxExp = inp.maxExpansies ?? 400000, maxT = inp.maxTijdMs ?? 15000;
   let exp = 0;
   let best: { n: Node; d: number } | null = null;
@@ -348,7 +352,9 @@ export function plan(inp: PlanInput, grid?: Grid): PlanResult {
         });
         if (!pe) continue;
         const p = pe;
-        const c = STEP * (dir < 0 ? 2.0 : 1.0) + (n.parent && dir !== n.dir ? 10 : 0) + 0.15 * Math.abs(steers[si] - n.p.delta) / dmax + (soft / (2 * SUB)) * STEP;
+        // kosten: afstand (achteruit duurder), wissel van rijrichting, stuurwerk (tegen zigzag) en zachte ondergrond
+        const c = STEP * (dir < 0 ? 2.0 : 1.0) + (n.parent && dir !== n.dir ? 10 : 0)
+          + 0.15 * Math.abs(steers[si] - n.p.delta) / dmax + (soft / (2 * SUB)) * STEP;
         const child: Node = { p, g: n.g + c, dir, steer: si, parent: n };
         const kc = key(p);
         const pc = closed.get(kc);
@@ -361,6 +367,29 @@ export function plan(inp: PlanInput, grid?: Grid): PlanResult {
     }
   }
   return { ...fail(exp >= maxExp || Date.now() - t0 > maxT ? 'Geen route gevonden binnen de rekentijd – probeer een andere eindrichting, minder marge of een kleiner voertuig.' : 'Geen botsingsvrije route gevonden met dit voertuig.', exp), restAfstand: best?.d ?? Infinity };
+
+  function refine(legs0: Leg[], dense: PlanPose[]): { legs: Leg[]; poses: PlanPose[] } | null {
+    const end = dense[dense.length - 1];
+    const endRef = refOf(end);
+    const collideSoft = makeCollision(v, g, marge * 0.6);
+    for (const iters of [150, 50, 15]) {
+      const legs = legs0.map((l) => ({ richting: l.richting, punten: smooth(l.punten, iters) }));
+      const sim = simulate(v, legs, { start: { ...dense[0] }, afronden: false });
+      if (!sim.uitvoerbaar || sim.maxAfwijking > 0.35) continue;
+      const last = sim.samples[sim.samples.length - 1];
+      const lr = refOf(last);
+      if (Math.hypot(lr[0] - endRef[0], lr[1] - endRef[1]) > 0.4) continue;
+      let ok = true;
+      for (let i = 0; i < sim.samples.length && ok; i += 2) {
+        const p = sim.samples[i];
+        if (collideSoft(p) || (artic && Math.abs(wrap(p.theta - p.phi)) > knikMax)) ok = false;
+      }
+      if (!ok) continue;
+      const poses = sim.samples.filter((_, i) => i % 5 === 0 || i === sim.samples.length - 1).map((p) => ({ x: p.x, y: p.y, theta: p.theta, phi: p.phi, delta: p.delta, dir: legs[p.leg]?.richting === 'achteruit' ? -1 : 1 }));
+      return { legs, poses };
+    }
+    return null;
+  }
 
   function finish(n: Node, expansies: number, rest: number): PlanResult {
     const chain: Node[] = [];
@@ -392,6 +421,22 @@ export function plan(inp: PlanInput, grid?: Grid): PlanResult {
     }
     const legsOk = legs.filter((l) => l.punten.length >= 2).map((l) => ({ ...l, punten: l.punten.map(([x, y]) => [Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000] as [number, number]) }));
     const r3 = (q: number) => Math.round(q * 1e4) / 1e4;
+    // gladstrijken + narijden met de stuurregelaar; alleen gebruiken als het botsingsvrij blijft
+    if (inp.verfijnen !== false) {
+      const ref = refine(legsOk, dense);
+      if (ref) return { ok: true, legs: ref.legs, expansies, lengte: (chain.length - 1) * STEP, wissels, restAfstand: rest, startVerschoven, eindVerschoven,
+        poses: ref.poses.map((q) => ({ x: r3(q.x), y: r3(q.y), theta: r3(q.theta), phi: r3(q.phi), delta: r3(q.delta), dir: q.dir })) };
+    }
     return { ok: true, legs: legsOk, expansies, lengte: (chain.length - 1) * STEP, wissels, restAfstand: rest, startVerschoven, eindVerschoven, poses: dense.map((q) => ({ x: r3(q.x), y: r3(q.y), theta: r3(q.theta), phi: r3(q.phi), delta: r3(q.delta), dir: q.dir })) };
   }
+}
+
+/** Pad gladstrijken (gradiëntmethode), begin- en eindpunt vast. */
+export function smooth(pts: [number, number][], iters: number, wData = 0.1, wSmooth = 0.35): [number, number][] {
+  if (pts.length < 3) return pts.slice();
+  const out = pts.map((p) => [p[0], p[1]] as [number, number]);
+  for (let it = 0; it < iters; it++)
+    for (let i = 1; i < out.length - 1; i++)
+      for (const k of [0, 1]) out[i][k] += wData * (pts[i][k] - out[i][k]) + wSmooth * (out[i - 1][k] + out[i + 1][k] - 2 * out[i][k]);
+  return out.map(([x, y]) => [Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000]);
 }

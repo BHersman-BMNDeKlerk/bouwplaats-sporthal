@@ -19,9 +19,13 @@ export interface RoutePanelActions {
   debug: boolean;
   setDebug: (on: boolean) => void;
   focus: (x: number, y: number) => void;
-  replan: (marge: number, achteruit: boolean, kronen?: boolean) => void;
+  replan: (marge: number, achteruit: boolean, kronen?: boolean, afwijking?: number) => void;
   /** Herbereken de route (ook een getekende route) zodat alle obstakels vermeden worden. */
   recalc: () => void;
+  toggleLeg: (i: number) => void;
+  removeLeg: (i: number) => void;
+  toEditable: () => void;
+  addStop: () => void;
 }
 
 type NumKey = Exclude<{ [K in keyof VehicleSpec]-?: NonNullable<VehicleSpec[K]> extends number ? K : never }[keyof VehicleSpec], undefined>;
@@ -102,11 +106,15 @@ export function routePanel(store: ProjectStore, r: Route, res: RouteResult, pos:
 
   // routedelen
   const legs = h('table', {},
-    h('tr', {}, h('th', {}, 'Deel'), h('th', {}, 'Richting'), h('th', { style: { textAlign: 'right' } }, 'lengte')),
+    h('tr', {}, h('th', {}, 'Deel'), h('th', {}, 'Richting'), h('th', { style: { textAlign: 'right' } }, 'lengte'), h('th', {}, '')),
     ...r.legs.map((l, i) => {
       let len = 0;
       for (let k = 1; k < l.punten.length; k++) len += Math.hypot(l.punten[k][0] - l.punten[k - 1][0], l.punten[k][1] - l.punten[k - 1][1]);
-      return h('tr', {}, h('td', {}, String(i + 1)), h('td', { style: { color: l.richting === 'vooruit' ? '#1565c0' : '#7b1fa2' } }, l.richting === 'vooruit' ? '▶ vooruit' : '◀ achteruit'), h('td', { class: 'num' }, `${f(len, 1)} m`));
+      const sb = { padding: '1px 6px', fontSize: '12px' };
+      return h('tr', {}, h('td', {}, String(i + 1)), h('td', { style: { color: l.richting === 'vooruit' ? '#1565c0' : '#7b1fa2' } }, l.richting === 'vooruit' ? '▶ vooruit' : '◀ achteruit'), h('td', { class: 'num' }, `${f(len, 1)} m`),
+        h('td', { style: { whiteSpace: 'nowrap', textAlign: 'right' } },
+          h('button', { style: sb, title: 'Rijrichting omdraaien', onclick: () => act.toggleLeg(i) }, '⇄'), ' ',
+          h('button', { style: sb, title: 'Dit deel verwijderen', onclick: () => { if (confirm(`Deel ${i + 1} verwijderen?`)) act.removeLeg(i); } }, '✕')));
     }));
 
   // afspelen
@@ -132,12 +140,15 @@ export function routePanel(store: ProjectStore, r: Route, res: RouteResult, pos:
     iM.addEventListener('keydown', (ev) => ev.stopPropagation());
     const cA = h('input', { type: 'checkbox', checked: r.plan.achteruit }) as HTMLInputElement;
     const cK = h('input', { type: 'checkbox', checked: r.plan.kronen !== false }) as HTMLInputElement;
+    const iA = h('input', { type: 'text', value: String(r.plan.afwijking ?? 1.0).replace('.', ','), style: { width: '70px' } }) as HTMLInputElement;
+    iA.addEventListener('keydown', (ev) => ev.stopPropagation());
     planBox = h('fieldset', {}, h('legend', {}, '⚡ Automatisch gepland'),
       h('div', { class: 'note', style: { marginLeft: 0 } }, r.plan.info ?? ''),
       h('div', { class: 'frow' }, 'Vrije ruimte rondom (m)', iM),
+      h('div', { class: 'frow' }, 'Mag afwijken van wisselpunten en eind (m)', iA, h('div', { class: 'hint' }, 'bv. iets verder doorsteken om de bocht te halen')),
       h('label', { class: 'lrow' }, cA, 'Achteruitrijden (steken) toestaan'),
       h('label', { class: 'lrow' }, cK, 'Lage boomkronen als obstakel (uit = alleen stammen, snoeien)'),
-      h('div', { class: 'btnrow' }, h('button', { class: 'primary', onclick: () => { const m = parseNum(iM.value); act.replan(m != null && !Number.isNaN(m) && m >= 0 ? m : r.plan!.marge, cA.checked, cK.checked); } }, '⚡ Herberekenen met deze instellingen')),
+      h('div', { class: 'btnrow' }, h('button', { class: 'primary', onclick: () => { const m = parseNum(iM.value); const a = parseNum(iA.value); act.replan(m != null && !Number.isNaN(m) && m >= 0 ? m : r.plan!.marge, cA.checked, cK.checked, a != null && !Number.isNaN(a) && a >= 0.3 ? a : undefined); } }, '⚡ Herberekenen met deze instellingen')),
       h('div', { class: 'note', style: { marginLeft: 0 } }, 'Start (S) en eind (E) staan op de kaart. Na het verplaatsen van elementen, hekken of kranen: opnieuw plannen. Zelf een deel toevoegen maakt er een getekende route van.'));
   }
   const recalcBtn = r.legs.length ? h('div', { class: 'btnrow', style: { marginTop: '2px' } },
@@ -152,7 +163,14 @@ export function routePanel(store: ProjectStore, r: Route, res: RouteResult, pos:
         h('button', { class: 'primary', onclick: () => act.addLeg('vooruit'), title: 'Teken een deel vooruit; de vooras volgt de lijn' }, '+ Vooruit'),
         h('button', { class: 'primary', onclick: () => act.addLeg('achteruit'), title: 'Teken een deel achteruit; de achteras (bij oplegger: de opleggeras) volgt de lijn' }, '+ Achteruit'),
         r.legs.length ? h('button', { onclick: act.removeLastLeg }, 'Laatste deel weg') : null),
-      h('div', { class: 'note', style: { marginLeft: 0 } }, 'Vooruit volgt de vooras de lijn (zoals de chauffeur stuurt); achteruit volgt de achteras, bij een oplegger de as van de oplegger. Een nieuw deel begint waar het voertuig nu staat.')),
+      r.plan
+        ? h('div', { class: 'btnrow' },
+          h('button', { onclick: act.addStop, title: 'Klik een punt op de route waar het voertuig moet stoppen (bv. om te steken)' }, '+ Tussenstop'),
+          h('button', { onclick: act.toEditable, title: 'Zet de berekende route om in lijnen waarvan je elk punt kunt verslepen' }, '✎ Omzetten naar bewerkbare lijnen'))
+        : null,
+      h('div', { class: 'note', style: { marginLeft: 0 } }, r.plan
+        ? 'Bewerken: sleep S (start), T (tussenstop) of E (eind) of de blokjes voor de rijrichting; de route wordt direct opnieuw berekend. Dubbelklik op T = tussenstop weg.'
+        : 'Bewerken: sleep een punt; sleep een wit bolletje om een punt toe te voegen; dubbelklik op een punt = weg. ⇄ draait de rijrichting van een deel om. Vooruit volgt de vooras de lijn, achteruit de achteras (bij oplegger de opleggeras).')),
     h('fieldset', {}, h('legend', {}, 'Afspelen'),
       slider, readout,
       h('div', { class: 'btnrow' }, play),

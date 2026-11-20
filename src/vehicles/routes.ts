@@ -23,6 +23,8 @@ export interface Route {
     /** Tussenstops (eind van elk rijdeel bij een route met meerdere delen), in volgorde. */
     tussen?: [number, number, number][];
     marge: number; achteruit: boolean; kronen?: boolean; info?: string;
+    /** Toegestane afwijking van wisselpunten en eind (m), bv. iets verder doorsteken. */
+    afwijking?: number;
   };
   /** Exact gepland traject (vervalt bij handmatige wijzigingen). */
   pad?: PlanPose[];
@@ -70,6 +72,22 @@ export class RouteEngine {
   }
 
   forget(id: string) { this.cache.delete(id); }
+}
+
+/** Douglas-Peucker: lijn vereenvoudigen (tol in m). */
+export function simplifyLine(pts: [number, number][], tol: number): [number, number][] {
+  if (pts.length < 3) return pts.slice();
+  const keep = new Uint8Array(pts.length); keep[0] = keep[pts.length - 1] = 1;
+  const stack: [number, number][] = [[0, pts.length - 1]];
+  while (stack.length) {
+    const [a, b] = stack.pop()!;
+    const [ax, ay] = pts[a], [bx, by] = pts[b];
+    const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1;
+    let best = -1, bd = tol;
+    for (let i = a + 1; i < b; i++) { const d = Math.abs(dy * (pts[i][0] - ax) - dx * (pts[i][1] - ay)) / L; if (d > bd) { bd = d; best = i; } }
+    if (best >= 0) { keep[best] = 1; stack.push([a, best], [best, b]); }
+  }
+  return pts.filter((_, i) => keep[i]);
 }
 
 export const DISCLAIMER = 'Indicatief: kinematisch model (fietsmodel) zonder banden­slip, last­verdeling of fabrikant­specifieke besturing. Geen vervanging van gecertificeerde software zoals AutoTURN of Vehicle Tracking. Controleer kritische manoeuvres met fabrikantgegevens of een proefrit.';
