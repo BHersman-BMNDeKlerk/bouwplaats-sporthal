@@ -1,0 +1,33 @@
+{
+  "name": "bouwplaats-sporthal-latourpad",
+  "version": "1.0.0",
+  "description": "3D-bouwplaatsinrichtingstool – verbouw sporthal Latourpad 16, Dordrecht",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p . && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p .",
+    "data": "tsx scripts/fetch-data.ts && tsx scripts/build-data.ts",
+    "data:fetch": "tsx scripts/fetch-data.ts",
+    "data:build": "tsx scripts/build-data.ts"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "earcut": "^3.2.4",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@types/earcut": "^3.0.0",
+    "@types/node": "^26.6.6",
+    "@types/three": "^0.187.0",
+    "geotiff": "^3.0.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  },
+  "private": true,
+  "type": "module"
+}

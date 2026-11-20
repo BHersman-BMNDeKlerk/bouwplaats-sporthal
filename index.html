@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bouwplaatsinrichting – Sporthal Latourpad 16</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23f2a900'/%3E%3Cpath d='M6 24h20M9 24V12l7-5 7 5v12' stroke='%23222' stroke-width='2.5' fill='none'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <header id="toolbar">
+      <div class="brand">
+        <span class="logo">▲</span>
+        <div>
+          <div class="title">Bouwplaatsinrichting</div>
+          <div class="subtitle" id="projectTitle">Sporthal Latourpad 16, Dordrecht</div>
+        </div>
+      </div>
+      <div class="tools">
+        <div class="group">
+          <button id="btnOpen" title="Project openen (Ctrl+O)">📂 Openen</button>
+          <button id="btnSave" title="Project opslaan (Ctrl+S)">💾 Opslaan</button>
+        </div>
+        <div class="group">
+          <button id="btnUndo" title="Ongedaan maken (Ctrl+Z)">↶ Ongedaan</button>
+          <button id="btnRedo" title="Opnieuw (Ctrl+Y)">↷ Opnieuw</button>
+        </div>
+        <div class="group">
+          <button id="btnTop" title="Bovenaanzicht, noord boven (T)">⬒ Bovenaanzicht</button>
+          <button id="btnOblique" title="Schuin 3D-aanzicht (P)">◩ 3D-aanzicht</button>
+          <button id="btnSporthal" title="Zoom naar de sporthal (Z)">⌖ Sporthal</button>
+        </div>
+        <div class="group">
+          <button id="btnSources" title="Herkomst en nauwkeurigheid van de data (B)">ⓘ Bronnen</button>
+          <button id="btnHelp" title="Handleiding (F1 of ?)">? Help</button>
+        </div>
+      </div>
+      <input type="file" id="fileOpen" accept=".json,application/json" hidden />
+    </header>
+
+    <main>
+      <aside id="layers" class="panel"></aside>
+      <div id="viewport">
+        <div id="loading"><div class="spinner"></div><div id="loadingMsg">Laden…</div></div>
+        <div id="tooltip" hidden></div>
+        <button id="compass" title="Noord boven (N)"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#ffffffe6" stroke="#666"/><path d="M20 5 L25 21 L20 18 L15 21 Z" fill="#c62828"/><path d="M20 35 L25 19 L20 22 L15 19 Z" fill="#888"/><text x="20" y="15.5" font-size="7" text-anchor="middle" fill="#fff" font-weight="700">N</text></svg></button>
+        <div id="warnings"></div>
+      </div>
+      <aside id="info" class="panel" hidden></aside>
+    </main>
+
+    <footer id="statusbar">
+      <span id="stCoord">Beweeg de muis over de kaart</span>
+      <span id="stHeight"></span>
+      <span id="stMsg"></span>
+      <span class="disclaimer">Indicatief hulpmiddel op basis van openbare bronnen – zie <a href="#" id="lnkSources">Bronnen</a>. BRK-perceelgrenzen zijn indicatief.</span>
+    </footer>
+
+    <div id="modal" hidden><div class="modal-box"><button class="close" title="Sluiten (Esc)">✕</button><div class="modal-content"></div></div></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
