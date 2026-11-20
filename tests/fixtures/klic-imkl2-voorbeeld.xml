@@ -1,0 +1,1303 @@
+<?xml version="1.0" encoding="UTF-8"?><gml:FeatureCollection gml:id="gil_9d5d2b4a-67e0-4a84-bd3a-50954cac301b" xsi:schemaLocation="http://www.geostandaarden.nl/imkl/wibon http://register.geostandaarden.nl/gmlapplicatieschema/imkl/2.0.0/imkl-wibon.xsd" xmlns:us-net-sw="http://inspire.ec.europa.eu/schemas/us-net-sw/4.0" xmlns:us-net-el="http://inspire.ec.europa.eu/schemas/us-net-el/4.0" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:us-net-wa="http://inspire.ec.europa.eu/schemas/us-net-wa/4.0" xmlns:gmlexr="http://www.opengis.net/gml/3.3/exr" xmlns:us-net-tc="http://inspire.ec.europa.eu/schemas/us-net-tc/4.0" xmlns:us-net-ogc="http://inspire.ec.europa.eu/schemas/us-net-ogc/4.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:us-net-th="http://inspire.ec.europa.eu/schemas/us-net-th/4.0" xmlns:base2="http://inspire.ec.europa.eu/schemas/base2/2.0" xmlns:imkl="http://www.geostandaarden.nl/imkl/wibon" xmlns:us-net-common="http://inspire.ec.europa.eu/schemas/us-net-common/4.0" xmlns:net="http://inspire.ec.europa.eu/schemas/net/4.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:base="http://inspire.ec.europa.eu/schemas/base/3.3">
+    <gml:boundedBy>
+        <gml:Envelope srsName="urn:ogc:def:crs:EPSG::28992" srsDimension="2">
+            <gml:lowerCorner>189357.0 352287.0</gml:lowerCorner>
+            <gml:upperCorner>189523.0 352457.0</gml:upperCorner>
+        </gml:Envelope>
+    </gml:boundedBy>
+    <gml:featureMember>
+        <imkl:GebiedsinformatieLevering gml:id="nl.imkl-KA0000._GebiedsinformatieLevering_22O000518-1">
+            <imkl:identificatie>
+                <imkl:NEN3610ID>
+                    <imkl:namespace>nl.imkl</imkl:namespace>
+                    <imkl:lokaalID>KA0000._GebiedsinformatieLevering_22O000518</imkl:lokaalID>
+                    <imkl:versie>1</imkl:versie>
+                </imkl:NEN3610ID>
+            </imkl:identificatie>
+            <imkl:beginLifespanVersion>2022-03-27T04:03:57.089+02:00</imkl:beginLifespanVersion>
+            <imkl:leveringsvolgnummer>1</imkl:leveringsvolgnummer>
+            <imkl:datumLeveringSamengesteld>2022-03-27T04:03:57.089+02:00</imkl:datumLeveringSamengesteld>
+            <imkl:indicatieLeveringCompleet>false</imkl:indicatieLeveringCompleet>
+            <imkl:achtergrondkaart>
+                <imkl:Achtergrondkaart>
+                    <imkl:achtergrondkaartSoort xlink:href="http://definities.geostandaarden.nl/imkl2015/id/waarde/AchtergrondkaartSoortValue/bgtRaster"/>
+                    <imkl:kaartreferentie>bronnen/GB_22O000518.png</imkl:kaartreferentie>
+                </imkl:Achtergrondkaart>
+            </imkl:achtergrondkaart>
+            <imkl:belanghebbende xlink:href="nl.imkl-KL1110._Belanghebbende_22O000518-1"/>
+            <imkl:belanghebbende xlink:href="nl.imkl-GM1641._Belanghebbende_22O000518-1"/>
+            <imkl:belanghebbende xlink:href="nl.imkl-KL1051._Belanghebbende_22O000518-0"/>
+            <imkl:belanghebbende xlink:href="nl.imkl-KL1031._Belanghebbende_22O000518-1"/>
+            <imkl:aanvraag xlink:href="nl.imkl-KA0000._GebiedsinformatieAanvraag_22O000518"/>
+        </imkl:GebiedsinformatieLevering>
+    </gml:featureMember>
+<gml:featureMember>
+        <imkl:GebiedsinformatieAanvraag gml:id="nl.imkl-KA0000._GebiedsinformatieAanvraag_22O000518">
+            <imkl:identificatie>
+                <imkl:NEN3610ID>
+                    <imkl:namespace>nl.imkl</imkl:namespace>
+                    <imkl:lokaalID>KA0000._GebiedsinformatieAanvraag_22O000518</imkl:lokaalID>
+                </imkl:NEN3610ID>
+            </imkl:identificatie>
+            <imkl:beginLifespanVersion>2022-03-25T10:17:19.000+01:00</imkl:beginLifespanVersion>
+            <imkl:ordernummer>9807138535</imkl:ordernummer>
+            <imkl:positienummer>0000000010</imkl:positienummer>
+            <imkl:klicMeldnummer>22O000518</imkl:klicMeldnummer>
+            
+            <imkl:referentie>Voorbeeldbestand KAT</imkl:referentie>
+            <imkl:aanvraagSoort xlink:href="http://definities.geostandaarden.nl/imkl2015/id/waarde/AanvraagSoortValue/orientatieverzoek"/>
+            <imkl:voorbereidingCoordinatieCivieleWerken>false</imkl:voorbereidingCoordinatieCivieleWerken>
+            <imkl:voorbereidingMedegebruikFysiekeInfrastructuur>false</imkl:voorbereidingMedegebruikFysiekeInfrastructuur>
+            <imkl:aanvraagDatum>2022-03-25T10:17:19.000+01:00</imkl:aanvraagDatum>
+            <imkl:soortWerkzaamheden xlink:href="http://definities.geostandaarden.nl/imkl2015/id/waarde/SoortWerkzaamhedenValue/bomenRooienOfPlanten"/>
+            <imkl:soortWerkzaamheden xlink:href="http://definities.geostandaarden.nl/imkl2015/id/waarde/SoortWerkzaamhedenValue/HDPEbuisLeggen"/>
+            <imkl:soortWerkzaamheden xlink:href="http://definities.geostandaarden.nl/imkl2015/id/waarde/SoortWerkzaamhedenValue/heien"/>
+            <imkl:soortWerkzaamheden xlink:href="http://definities.geostandaarden.nl/imkl2015/id/waarde/SoortWerkzaamhedenValue/ruilverkaveling"/>
+            <imkl:locatieWerkzaamheden>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119675</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>110</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:locatieWerkzaamheden>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001112232</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Monsieurstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>1</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AR</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001112236</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Monsieurstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>11</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AR</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001112240</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Monsieurstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>13</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AR</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001112248</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Monsieurstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>2</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AR</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001112250</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Monsieurstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>3</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AR</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001112252</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Monsieurstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>4</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AR</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001112254</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Monsieurstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>5</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AR</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001112256</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Monsieurstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AR</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001112258</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Monsieurstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>9</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AR</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113302</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Helstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>2</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AP</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113304</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Helstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>3</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AP</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113306</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Helstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>4</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AP</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113308</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Helstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>5</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AP</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113310</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Helstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>6</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AP</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113314</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Helstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>6</imkl:huisnummer>
+                    <imkl:huisletter>b</imkl:huisletter>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AP</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113316</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Helstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>6</imkl:huisnummer>
+                    <imkl:huisletter>c</imkl:huisletter>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AP</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113318</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Helstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AP</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113320</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Helstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>8</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AP</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113602</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>10</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113604</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>11</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113606</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>12</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113608</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>13</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113610</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>15</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113612</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>16</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113614</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>17</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113616</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>18</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113620</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>20</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113622</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>21</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113624</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>22</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113626</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>24</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113628</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>25</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113630</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>26</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113632</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>27</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113642</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>5</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113644</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>6</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113798</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>6</imkl:huisnummer>
+                    <imkl:huisletter>a</imkl:huisletter>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113804</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>8</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113806</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>9</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113808</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kroonstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>10</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AS</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113810</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kroonstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>10</imkl:huisnummer>
+                    <imkl:huisletter>a</imkl:huisletter>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AS</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113812</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kroonstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>10</imkl:huisnummer>
+                    <imkl:huisletter>c</imkl:huisletter>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AS</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113814</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kroonstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>10</imkl:huisnummer>
+                    <imkl:huisletter>d</imkl:huisletter>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AS</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113820</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kroonstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>12</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AS</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113826</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kroonstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>2</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AS</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113828</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kroonstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>3</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AS</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113830</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kroonstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>4</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AS</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113832</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kroonstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>5</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AS</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113834</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kroonstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>6</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AS</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001113838</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kroonstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>8</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AS</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001117532</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>14</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001117534</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>19</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001117536</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>23</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001117554</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kroonstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>1</imkl:huisnummer>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AS</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001117556</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kroonstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>10</imkl:huisnummer>
+                    <imkl:huisletter>b</imkl:huisletter>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AS</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119637</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>1</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119639</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>2</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119641</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>3</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119643</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>4</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119645</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>5</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119647</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>6</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119649</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>7</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119651</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>8</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119653</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>9</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119655</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>10</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119657</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>101</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119659</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>102</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119661</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>103</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119663</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>104</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119665</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>105</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119667</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>106</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119669</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>107</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119671</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>108</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119673</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>109</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119675</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>110</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119677</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>111</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119679</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>112</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119681</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>113</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119683</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>114</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119685</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>115</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119687</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>116</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119689</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>200</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119691</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>200a</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119693</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>201</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119695</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>202</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119697</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>203</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119699</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>204</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119701</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>205</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119703</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>206</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119705</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>207</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119707</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>208</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119709</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>209</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119711</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>210</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119713</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>211</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119715</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>212</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119717</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>213</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119719</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>214</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119721</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>215</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001119723</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>216</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001120107</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Kloosterlaan</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>7</imkl:huisnummer>
+                    <imkl:huisletter>k</imkl:huisletter>
+                    <imkl:huisnummertoevoeging>100</imkl:huisnummertoevoeging>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AN</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:huisaansluitingAdressen>
+                <imkl:Adres>
+                    <imkl:BAGid>1641010001125536</imkl:BAGid>
+                    <imkl:openbareRuimteNaam>Monsieurstraat</imkl:openbareRuimteNaam>
+                    <imkl:huisnummer>15</imkl:huisnummer>
+                    <imkl:huisletter>a</imkl:huisletter>
+                    <imkl:woonplaatsNaam>Wessem</imkl:woonplaatsNaam>
+                    <imkl:postcode>6019AR</imkl:postcode>
+                    <imkl:landcode xlink:href="http://publications.europa.eu/resource/authority/country/NLD"/>
+                </imkl:Adres>
+            </imkl:huisaansluitingAdressen>
+            <imkl:orientatiepolygoon xlink:href="nl.imkl-KA0000._Orientatiepolygoon_22O000518"/>
+        </imkl:GebiedsinformatieAanvraag>
+    </gml:featureMember>
+<gml:featureMember>
+        <imkl:Beheerder gml:id="nl.imkl-KL1110._Beheerder">
+            <imkl:identificatie>
+                <imkl:NEN3610ID>
+                    <imkl:namespace>nl.imkl</imkl:namespace>
+                    <imkl:lokaalID>KL1110._Beheerder</imkl:lokaalID>
+                </imkl:NEN3610ID>
+            </imkl:identificatie>
+            <imkl:beginLifespanVersion>2000-01-01T00:00:00.000+01:00</imkl:beginLifespanVersion>
+            <imkl:bronhoudercode>KL1110</imkl:bronhoudercode>
+            <imkl:organisatie>
+                <imkl:Organisatie>
+                    <imkl:naam>WML N.V.</imkl:naam>
+                </imkl:Organisatie>
+            </imkl:organisatie>
+        </imkl:Beheerder>
+    </gml:featureMember>
+<gml:featureMember>
+        <imkl:Beheerder gml:id="nl.imkl-GM1641._Beheerder">
+            <imkl:identificatie>
+                <imkl:NEN3610ID>
+                    <imkl:namespace>nl.imkl</imkl:namespace>
+                    <imkl:lokaalID>GM1641._Beheerder</imkl:lokaalID>
+                </imkl:NEN3610ID>
+            </imkl:identificatie>
+            <imkl:beginLifespanVersion>2000-01-01T00:00:00.000+01:00</imkl:beginLifespanVersion>
+            <imkl:bronhoudercode>GM1641</imkl:bronhoudercode>
+            <imkl:organisatie>
+                <imkl:Organisatie>
+                    <imkl:naam>(verwijderd)</imkl:naam>
+                </imkl:Organisatie>
+            </imkl:organisatie>
+        </imkl:Beheerder>
+    </gml:featureMember>
+<gml:featureMember>
+        <imkl:Beheerder gml:id="nl.imkl-KL1051._Beheerder">
+            <imkl:identificatie>
+                <imkl:NEN3610ID>
+                    <imkl:namespace>nl.imkl</imkl:namespace>
+                    <imkl:lokaalID>KL1051._Beheerder</imkl:lokaalID>
+                </imkl:NEN3610ID>
+            </imkl:identificatie>
+            <imkl:beginLifespanVersion>2000-01-01T00:00:00.000+01:00</imkl:beginLifespanVersion>
+            <imkl:bronhoudercode>KL1051</imkl:bronhoudercode>
+            <imkl:organisatie>
+                <imkl:Organisatie>
+                    <imkl:naam>KPN</imkl:naam>
+                </imkl:Organisatie>
+            </imkl:organisatie>
+        </imkl:Beheerder>
+    </gml:featureMember>
+<gml:featureMember>
+        <imkl:Beheerder gml:id="nl.imkl-KL1031._Beheerder">
+            <imkl:identificatie>
+                <imkl:NEN3610ID>
+                    <imkl:namespace>nl.imkl</imkl:namespace>
+                    <imkl:lokaalID>KL1031._Beheerder</imkl:lokaalID>
+                </imkl:NEN3610ID>
+            </imkl:identificatie>
+            <imkl:beginLifespanVersion>2000-01-01T00:00:00.000+01:00</imkl:beginLifespanVersion>
+            <imkl:bronhoudercode>KL1031</imkl:bronhoudercode>
+            <imkl:organisatie>
+                <imkl:Organisatie>
+                    <imkl:naam>Enexis B.V.</imkl:naam>
+                    <imkl:kvkNummer>17131139</imkl:kvkNummer>
+                </imkl:Organisatie>
+            </imkl:organisatie>
+        </imkl:Beheerder>
+    </gml:featureMember>
+<gml:featureMember>
+<imkl:DiepteTovMaaiveld gml:id="nl.imkl-KL1110.DTMV_GIS_WADeckungA229300197_2975660"><imkl:identificatie><imkl:NEN3610ID><imkl:namespace>nl.imkl</imkl:namespace><imkl:lokaalID>KL1110.DTMV_GIS_WADeckungA229300197_2975660</imkl:lokaalID></imkl:NEN3610ID></imkl:identificatie><imkl:beginLifespanVersion>2013-11-29T00:00:00+01:00</imkl:beginLifespanVersion><imkl:diepteNauwkeurigheid xlink:href="http://definities.geostandaarden.nl/imkl2015/id/waarde/NauwkeurigheidDiepteValue/onbekend"></imkl:diepteNauwkeurigheid><imkl:dieptePeil uom="urn:ogc:def:uom:OGC::m">1.3</imkl:dieptePeil><imkl:diepteAangrijpingspunt xlink:href="http://definities.geostandaarden.nl/imkl2015/id/waarde/DiepteAangrijpingspuntValue/bovenkant"></imkl:diepteAangrijpingspunt><imkl:rotatiehoekSymbool uom="urn:ogc:def:uom:OGC::deg">0</imkl:rotatiehoekSymbool><imkl:ligging><gml:Point srsName="urn:x-ogc:def:crs:EPSG:28992" gml:id="DTMV_GIS_WADeckungA229300197_2975660_GeoSeq_1"><gml:pos>189505.23 352419.965</gml:pos></gml:Point></imkl:ligging><imkl:inNetwork xlink:href="nl.imkl-KL1110.UNET_Water_3"></imkl:inNetwork></imkl:DiepteTovMaaiveld>
+</gml:featureMember>
+<gml:featureMember>
+<imkl:Utiliteitsnet xmlns:gco="http://www.isotc211.org/2005/gco" xmlns:gmd="http://www.isotc211.org/2005/gmd" gml:id="nl.imkl-KL1110.UNET_Water_3"><us-net-common:utilityNetworkType xlink:href="http://inspire.ec.europa.eu/codelist/UtilityNetworkTypeValue/water"></us-net-common:utilityNetworkType><us-net-common:authorityRole xlink:href="http://inspire.ec.europa.eu/codelist/RelatedPartyRoleValue/operator"></us-net-common:authorityRole><imkl:identificatie><imkl:NEN3610ID><imkl:namespace>nl.imkl</imkl:namespace><imkl:lokaalID>KL1110.UNET_Water_3</imkl:lokaalID></imkl:NEN3610ID></imkl:identificatie><imkl:beginLifespanVersion>2016-11-16T00:00:00+01:00</imkl:beginLifespanVersion><imkl:thema xlink:href="http://definities.geostandaarden.nl/imkl2015/id/waarde/Thema/water"></imkl:thema><imkl:standaardDieptelegging uom="urn:ogc:def:uom:OGC::m">1</imkl:standaardDieptelegging></imkl:Utiliteitsnet>
+</gml:featureMember>
+<gml:featureMember>
+<imkl:Waterleiding xmlns:gco="http://www.isotc211.org/2005/gco" xmlns:gmd="http://www.isotc211.org/2005/gmd" gml:id="nl.imkl-KL1110.WALD_GIS_WALeitungsabschnitt177957444_2191133"><net:beginLifespanVersion>2016-07-08T00:00:00+02:00</net:beginLifespanVersion><net:inspireId><base:Identifier><base:localId>KL1110.WALD_GIS_WALeitungsabschnitt177957444_2191133</base:localId><base:namespace>nl.imkl</base:namespace></base:Identifier></net:inspireId><net:inNetwork xlink:href="nl.imkl-KL1110.UNET_Water_3"></net:inNetwork><net:link xlink:href="nl.imkl-KL1110.UL_GIS_WALeitungsabschnitt177957444_2191132"></net:link><us-net-common:currentStatus xlink:href="http://inspire.ec.europa.eu/codelist/ConditionOfFacilityValue/disused"></us-net-common:currentStatus><us-net-common:validFrom>1955-01-01T00:00:00+01:00</us-net-common:validFrom><us-net-common:verticalPosition>underground</us-net-common:verticalPosition><us-net-common:utilityDeliveryType xlink:href="http://inspire.ec.europa.eu/codelist/UtilityDeliveryTypeValue/distribution"></us-net-common:utilityDeliveryType><us-net-common:warningType xsi:nil="true"></us-net-common:warningType><us-net-common:pipeDiameter uom="urn:ogc:def:uom:OGC::mm">100</us-net-common:pipeDiameter><us-net-wa:waterType xlink:href="http://inspire.ec.europa.eu/codelist/WaterTypeValue/potable"></us-net-wa:waterType><imkl:label>100 AC</imkl:label></imkl:Waterleiding>
+</gml:featureMember>
+<gml:featureMember>
+<imkl:Waterleiding xmlns:gco="http://www.isotc211.org/2005/gco" xmlns:gmd="http://www.isotc211.org/2005/gmd" gml:id="nl.imkl-KL1110.WALD_GIS_WALeitungsabschnitt177957408_2191153"><net:beginLifespanVersion>2016-07-08T00:00:00+02:00</net:beginLifespanVersion><net:inspireId><base:Identifier><base:localId>KL1110.WALD_GIS_WALeitungsabschnitt177957408_2191153</base:localId><base:namespace>nl.imkl</base:namespace></base:Identifier></net:inspireId><net:inNetwork xlink:href="nl.imkl-KL1110.UNET_Water_3"></net:inNetwork><net:link xlink:href="nl.imkl-KL1110.UL_GIS_WALeitungsabschnitt177957408_2191152"></net:link><us-net-common:currentStatus xlink:href="http://inspire.ec.europa.eu/codelist/ConditionOfFacilityValue/disused"></us-net-common:currentStatus><us-net-common:validFrom>1996-01-01T00:00:00+01:00</us-net-common:validFrom><us-net-common:verticalPosition>underground</us-net-common:verticalPosition><us-net-common:utilityDeliveryType xlink:href="http://inspire.ec.europa.eu/codelist/UtilityDeliveryTypeValue/distribution"></us-net-common:utilityDeliveryType><us-net-common:warningType xsi:nil="true"></us-net-common:warningType><us-net-common:pipeDiameter uom="urn:ogc:def:uom:OGC::mm">100</us-net-common:pipeDiameter><us-net-wa:waterType xlink:href="http://inspire.ec.europa.eu/codelist/WaterTypeValue/potable"></us-net-wa:waterType><imkl:label>100 NGIJ</imkl:label></imkl:Waterleiding>
+</gml:featureMember>
+<gml:featureMember>
+<us-net-common:UtilityLink xmlns:gco="http://www.isotc211.org/2005/gco" xmlns:gmd="http://www.isotc211.org/2005/gmd" gml:id="nl.imkl-KL1110.UL_GIS_WALeitungsabschnitt177957444_2191132"><net:beginLifespanVersion>2016-07-08T00:00:00+02:00</net:beginLifespanVersion><net:inspireId><base:Identifier><base:localId>KL1110.UL_GIS_WALeitungsabschnitt177957444_2191132</base:localId><base:namespace>nl.imkl</base:namespace></base:Identifier></net:inspireId><net:inNetwork xlink:href="nl.imkl-KL1110.UNET_Water_3"></net:inNetwork><net:centrelineGeometry><gml:LineString srsName="urn:x-ogc:def:crs:EPSG:28992" gml:id="UL_GIS_WALeitungsabschnitt177957444_2191132_GeoSeq_1"><gml:posList>189510.695 352395.917 189510.264 352398.2 189510.172 352398.685 189509.971 352399.75 189508.112 352409.588 189507.944 352410.478 189507.669 352411.935 189505.494 352417.301 189504.888 352418.797 189500.591 352421.12 189500.009 352421.435 189478.074 352423.594 189474.389 352423.957 189472.089 352424.183 189468.133 352424.703</gml:posList></gml:LineString></net:centrelineGeometry><net:fictitious>false</net:fictitious><us-net-common:currentStatus xlink:href="http://inspire.ec.europa.eu/codelist/ConditionOfFacilityValue/disused"></us-net-common:currentStatus><us-net-common:validFrom>1955-01-01T00:00:00+01:00</us-net-common:validFrom><us-net-common:verticalPosition>underground</us-net-common:verticalPosition></us-net-common:UtilityLink>
+</gml:featureMember>
+<gml:featureMember>
+<us-net-common:UtilityLink xmlns:gco="http://www.isotc211.org/2005/gco" xmlns:gmd="http://www.isotc211.org/2005/gmd" gml:id="nl.imkl-KL1110.UL_GIS_WALeitungsabschnitt177957408_2191152"><net:beginLifespanVersion>2016-07-08T00:00:00+02:00</net:beginLifespanVersion><net:inspireId><base:Identifier><base:localId>KL1110.UL_GIS_WALeitungsabschnitt177957408_2191152</base:localId><base:namespace>nl.imkl</base:namespace></base:Identifier></net:inspireId><net:inNetwork xlink:href="nl.imkl-KL1110.UNET_Water_3"></net:inNetwork><net:centrelineGeometry><gml:LineString srsName="urn:x-ogc:def:crs:EPSG:28992" gml:id="UL_GIS_WALeitungsabschnitt177957408_2191152_GeoSeq_1"><gml:posList>189521.101 352393.201 189520.227 352392.957 189519.647 352393.106</gml:posList></gml:LineString></net:centrelineGeometry><net:fictitious>false</net:fictitious><us-net-common:currentStatus xlink:href="http://inspire.ec.europa.eu/codelist/ConditionOfFacilityValue/disused"></us-net-common:currentStatus><us-net-common:validFrom>1996-01-01T00:00:00+01:00</us-net-common:validFrom><us-net-common:verticalPosition>underground</us-net-common:verticalPosition></us-net-common:UtilityLink>
+</gml:featureMember>
+<gml:featureMember>
+<imkl:AanduidingEisVoorzorgsmaatregel gml:id="nl.imkl-KL1031.AEVM__gas_g_pipe_EV_29621085_141540">
+			<imkl:identificatie>
+				<imkl:NEN3610ID>
+					<imkl:namespace>nl.imkl</imkl:namespace>
+					<imkl:lokaalID>KL1031.AEVM__gas_g_pipe_EV_29621085_141540</imkl:lokaalID>
+				</imkl:NEN3610ID>
+			</imkl:identificatie>
+			<imkl:beginLifespanVersion>2002-09-20T00:00:00+02:00</imkl:beginLifespanVersion>
+			<imkl:inNetwork xlink:href="nl.imkl-KL1031.UNET_gasHogeDruk_4"/>
+			<imkl:eisVoorzorgsmaatregel>O_GHDW3-hoog</imkl:eisVoorzorgsmaatregel><imkl:contactVoorzorgsmaatregel>
+				<imkl:Contact/>
+			</imkl:contactVoorzorgsmaatregel>
+			<imkl:netbeheerderNetOmschrijving>Gas Hoge Druk</imkl:netbeheerderNetOmschrijving>
+			<imkl:netbeheerderNetAanduiding>GHD</imkl:netbeheerderNetAanduiding>
+			<imkl:netbeheerderWerkAanduiding>W3-hoog</imkl:netbeheerderWerkAanduiding><imkl:geometrie>
+				<gml:Polygon gml:id="AEVM__gas_g_pipe_EV_29621085_141540_GeoSeq_1" srsName="urn:ogc:def:crs:EPSG::28992"><gml:exterior><gml:LinearRing><gml:posList srsDimension="2">189397.055 352342.821 189394.581 352342.708 189394.665 352342.782 189394.666 352342.783 189394.882 352342.928 189394.883 352342.929 189395.117 352343.045 189395.118 352343.045 189395.364 352343.13 189395.365 352343.13 189395.62 352343.182 189395.622 352343.182 189395.881 352343.2 189395.883 352343.2 189396.142 352343.184 189396.144 352343.184 189396.399 352343.134 189396.4 352343.134 189396.647 352343.051 189396.648 352343.05 189396.882 352342.936 189396.883 352342.935 189397.055 352342.821</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon>
+			</imkl:geometrie>
+		</imkl:AanduidingEisVoorzorgsmaatregel>
+</gml:featureMember>
+<gml:featureMember>
+<imkl:Utiliteitsnet gml:id="nl.imkl-KL1031.UNET_gasHogeDruk_4">
+			<us-net-common:utilityNetworkType xlink:href="http://inspire.ec.europa.eu/codelist/UtilityNetworkTypeValue/oilGasChemical"></us-net-common:utilityNetworkType>
+			<us-net-common:authorityRole xlink:href="http://inspire.ec.europa.eu/codelist/RelatedPartyRoleValue/operator"></us-net-common:authorityRole>
+			<us-net-common:disclaimer>
+				<gmd:PT_FreeText xmlns:gmd="http://www.isotc211.org/2005/gmd">
+					<gmd:textGroup>
+						<gmd:LocalisedCharacterString>https://www.enexis.nl/Documents/brochures/brochure-graaf-zorgvuldig-klic-noord-en-zuid.pdf</gmd:LocalisedCharacterString>
+					</gmd:textGroup>
+				</gmd:PT_FreeText>
+			</us-net-common:disclaimer>
+			<imkl:identificatie>
+				<imkl:NEN3610ID>
+					<imkl:namespace>nl.imkl</imkl:namespace>
+					<imkl:lokaalID>KL1031.UNET_gasHogeDruk_4</imkl:lokaalID>
+				</imkl:NEN3610ID>
+			</imkl:identificatie>
+			<imkl:beginLifespanVersion>2008-01-01T00:00:00+01:00</imkl:beginLifespanVersion>
+			<imkl:endLifespanVersion>9999-01-01T00:00:00+01:00</imkl:endLifespanVersion>
+			<imkl:omschrijving>Gas midden druk netwerk Enexis B.V. van 0.95 t/m 8 bar</imkl:omschrijving>
+			<imkl:thema xlink:href="http://definities.geostandaarden.nl/imkl2015/id/waarde/Thema/gasHogeDruk"></imkl:thema>
+			<imkl:standaardDieptelegging uom="urn:ogc:def:uom:OGC::m">1</imkl:standaardDieptelegging>
+		</imkl:Utiliteitsnet>
+</gml:featureMember>
+<gml:featureMember>
+<imkl:Annotatie gml:id="nl.imkl-KL1110.ANNO_GIS_WAArmatur_label229300261_2250179"><imkl:identificatie><imkl:NEN3610ID><imkl:namespace>nl.imkl</imkl:namespace><imkl:lokaalID>KL1110.ANNO_GIS_WAArmatur_label229300261_2250179</imkl:lokaalID></imkl:NEN3610ID></imkl:identificatie><imkl:beginLifespanVersion>2019-08-15T00:00:00+02:00</imkl:beginLifespanVersion><imkl:label>A 86417</imkl:label><imkl:inNetwork xlink:href="nl.imkl-KL1110.UNET_Water_3"></imkl:inNetwork><imkl:annotatieType xlink:href="http://definities.geostandaarden.nl/imkl2015/id/waarde/AnnotatieTypeValue/annotatielabel"></imkl:annotatieType><imkl:rotatiehoek uom="urn:ogc:def:uom:OGC::deg">0</imkl:rotatiehoek><imkl:labelpositie><imkl:Labelpositie><imkl:aangrijpingHorizontaal xlink:href="http://definities.geostandaarden.nl/imkl2015/id/waarde/LabelpositieValue/0"></imkl:aangrijpingHorizontaal><imkl:aangrijpingVerticaal xlink:href="http://definities.geostandaarden.nl/imkl2015/id/waarde/LabelpositieValue/0"></imkl:aangrijpingVerticaal></imkl:Labelpositie></imkl:labelpositie><imkl:ligging><gml:Point srsName="urn:x-ogc:def:crs:EPSG:28992" gml:id="ANNO_GIS_WAArmatur_label229300261_2250179_GeoSeq_1"><gml:pos>189512.729 352397.309</gml:pos></gml:Point></imkl:ligging></imkl:Annotatie>
+</gml:featureMember>
+</gml:FeatureCollection>

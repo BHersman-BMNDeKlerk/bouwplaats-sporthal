@@ -21,6 +21,27 @@
           <button id="btnSave" title="Project opslaan (Ctrl+S)">💾 Opslaan</button>
         </div>
         <div class="group">
+          <div class="dropdown">
+            <button id="btnImport" title="Inmeting, KLIC of DXF importeren">⇪ Importeren ▾</button>
+            <div class="menu" id="menuImport" hidden>
+              <button data-imp="grens">Ingemeten perceelgrens (CSV)…</button>
+              <button data-imp="punten">Ingemeten punten met code (CSV)…</button>
+              <button data-imp="klic">KLIC-levering (zip)…</button>
+              <button data-imp="dxf">DXF-onderlegger…</button>
+            </div>
+          </div>
+          <div class="dropdown">
+            <button id="btnDraw" title="Eigen obstakels tekenen">✎ Tekenen ▾</button>
+            <div class="menu" id="menuDraw" hidden>
+              <button data-draw="doorrijhoogte-lijn">Vrije doorrijhoogte – lijn (kabel, tak, poort)</button>
+              <button data-draw="doorrijhoogte-vlak">Vrije doorrijhoogte – vlak (viaduct, overkapping)</button>
+              <button data-draw="paaltjes">Paaltjes</button>
+              <button data-draw="hekwerk">Hekwerk</button>
+              <button data-draw="nietBerijdbaar">Niet berijdbaar vlak</button>
+            </div>
+          </div>
+        </div>
+        <div class="group">
           <button id="btnUndo" title="Ongedaan maken (Ctrl+Z)">↶ Ongedaan</button>
           <button id="btnRedo" title="Opnieuw (Ctrl+Y)">↷ Opnieuw</button>
         </div>
@@ -35,6 +56,7 @@
         </div>
       </div>
       <input type="file" id="fileOpen" accept=".json,application/json" hidden />
+      <input type="file" id="fileImport" hidden />
     </header>
 
     <main>

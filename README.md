@@ -62,6 +62,20 @@ npm run preview
 
 > Dubbelklikken op `dist/index.html` werkt niet: browsers blokkeren het laden van data vanaf `file://`.
 
+## Fase 2: inmeting, KLIC, obstakels en onderleggers
+
+Alles via de knoppen **Importeren** en **Tekenen** in de app (geen commando's nodig):
+
+| Import | Formaat |
+|---|---|
+| Ingemeten perceelgrens | CSV: puntnummer, X, Y, Z (RD/NAP). Heeft voorrang op de BRK-grens. |
+| Ingemeten punten | CSV: puntnummer, X, Y, Z, code. Codes koppel je aan paal, putdeksel, boom, hoogtemaat, grenspunt of overig. |
+| KLIC-levering | De leverings-zip (IMKL 2.0, `GI_gebiedsinformatielevering_*.xml`). |
+| DXF-onderlegger | ASCII-DXF; plaatsing in RD, via het IFC-nulpunt of handmatig. |
+
+CSV: scheidingsteken `;` `,` tab of spatie, decimale komma of punt, kopregel optioneel; verwisselde X/Y worden herkend.
+Geïmporteerde gegevens worden in het projectbestand bewaard (en automatisch in de browser, IndexedDB).
+
 ## Bediening (kort)
 
 | Actie | Hoe |
@@ -137,8 +151,8 @@ BGT-classificatie, boomdetectie en undo/redo. In latere fases komen swept path e
 
 | Fase | Inhoud | Status |
 |---|---|---|
-| 1 | Ondergrond en omgeving: BGT, 3D BAG, AHN, BRK, luchtfoto, bomen, obstakels, lagenpaneel | **gereed – ter beoordeling** |
-| 2 | Eigen inmeting (CSV), KLIC-import, handmatige obstakels, DXF-onderlegger | gepland |
+| 1 | Ondergrond en omgeving: BGT, 3D BAG, AHN, BRK, luchtfoto, bomen, obstakels, lagenpaneel | gereed |
+| 2 | Eigen inmeting (CSV), KLIC-import, handmatige obstakels, DXF-onderlegger | **gereed – ter beoordeling** |
 | 3 | Bouwplaatselementen (keten, hekken, containers, steigers, …), botsingscontrole, maatvoering | gepland |
 | 4 | Draai- en steekbewegingen (swept path) met kinematisch model + verplichte tests | gepland |
 | 5 | Kraanopstellingen (toren- en mobiele kraan), lasttabellen, overdraai | gepland |

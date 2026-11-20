@@ -24,7 +24,7 @@ export function helpContent(): Node {
   const k = (s: string) => h('kbd', {}, s);
   const div = h('div');
   div.innerHTML = `
-  <h2>Handleiding – fase 1: ondergrond en omgeving</h2>
+  <h2>Handleiding – fase 1 en 2: ondergrond, inmeting, KLIC en obstakels</h2>
   <p>Deze tool toont de projectlocatie <b>Latourpad 16, Dordrecht</b> in 3D met openbare brondata
   (BGT, 3D BAG, AHN, BRK, luchtfoto). In latere fases komen de bouwplaatsinrichting, draaicirkels van
   vrachtwagens, kranen en de export naar de bouwplaatstekening erbij.</p>
@@ -48,6 +48,23 @@ export function helpContent(): Node {
       Het 3D-model past zich aan; overschreven gebouwen krijgen een <span style="color:#ff8f00;font-weight:600">oranje rand</span>.
       Ook boomhoogte, kroonstraal en onderkant kroon en de hoogte van palen en borden zijn aan te passen.</li>
   </ul>
+  <h3>Importeren (menu Importeren)</h3>
+  <ul>
+    <li><b>Ingemeten perceelgrens (CSV)</b>: puntnummer, X, Y, Z in RD/NAP (scheidingsteken ; , tab of spatie; decimale komma of punt;
+      kopregel optioneel). De punten worden in volgorde verbonden. <b>De ingemeten grens heeft voorrang</b> op de BRK-grens bij alle
+      controles; zonder inmeting wordt het BRK-perceel gebruikt met de waarschuwing "indicatieve grens".</li>
+    <li><b>Ingemeten punten (CSV)</b>: puntnummer, X, Y, Z, code. Per code kies je hoe het punt getoond wordt (paal, putdeksel, boom,
+      hoogtemaat, grenspunt, overig of niet tonen). Aanpassen kan later via <i>codes</i> in het lagenpaneel.</li>
+    <li><b>KLIC-levering (zip)</b>: de leverings-zip van het Kadaster (IMKL 2.0). Thema's in KLIC-kleuren, per thema aan/uit, met
+      diepte-aanduidingen, EV-vlakken, annotaties en maatvoering. Klik op een leiding voor beheerder, status, diameter en diepte.
+      Diepten zijn indicatief: graaf altijd proefsleuven.</li>
+    <li><b>DXF-onderlegger</b>: 2D-lijnen op maaiveld. Plaatsing: coördinaten in RD, hetzelfde nulpunt als het IFC-model, of handmatig.
+      Lagen, kleur en teksten zijn in te stellen.</li>
+  </ul>
+  <h3>Eigen obstakels tekenen (menu Tekenen)</h3>
+  <p>Vrije doorrijhoogte (lijn of vlak), paaltjes, hekwerk en niet-berijdbare vlakken. <b>Klik</b> = punt toevoegen (slepen blijft de
+  kaart verschuiven), <b>dubbelklik</b> of <kbd>Enter</kbd> = klaar, <kbd>Backspace</kbd> = laatste punt weg, <kbd>Esc</kbd> = annuleren.
+  Daarna kun je naam en hoogte aanpassen of het obstakel verwijderen. Tip: teken in de 2D-weergave (<kbd>T</kbd>).</p>
   <h3>Ontwerpmodel (IFC)</h3>
   <p>Het nieuwe pand staat onder <b>Ontwerp (IFC)</b> als grijze blokken (buitenwerkse contour, per deel tot de
   hoogste dakrand) en als paarse buitencontour op het maaiveld. Klik op het pand voor peil (0 P = −0,08 m NAP),

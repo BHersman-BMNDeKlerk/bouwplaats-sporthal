@@ -3,8 +3,11 @@
  * en (in latere fases) geplaatste elementen, routes en kraanopstellingen.
  * Inclusief undo/redo op basis van snapshots.
  */
+import type { MeetPunt, PuntSoort } from '../data/csvPoints';
+import type { DxfData, DxfPlacement } from '../data/dxf';
 import type { HeightOverride } from '../data/heights';
 import type { Placement } from '../data/ifcGeom';
+import type { KlicData } from '../data/klic';
 
 export interface TreeOverride {
   hoogte?: number;
@@ -20,6 +23,66 @@ export interface ObstacleOverride {
   opmerking?: string;
 }
 
+/** Ingemeten punten uit een CSV-import. */
+export interface SurveyImport {
+  bestand: string;
+  geimporteerd: string;
+  punten: MeetPunt[];
+}
+
+/** Ingemeten perceelgrens: punten in volgorde; heeft voorrang op de BRK-grens. */
+export interface MeasuredBoundary extends SurveyImport {
+  gesloten: boolean;
+}
+
+/** Koppeling meetcode → soort object/symbool. */
+export interface CodeRule {
+  soort: PuntSoort;
+  /** Hoogte (m) voor 3D-objecten (paal, boom). */
+  hoogte?: number;
+}
+
+/** Verwijzing naar een geïmporteerde KLIC-levering (data in `bijlagen`). */
+export interface KlicRef {
+  id: string;
+  meldnummer: string;
+  referentie: string;
+  bestand: string;
+  geimporteerd: string;
+  datumLevering: string;
+  zichtbaar: boolean;
+}
+
+/** Verwijzing naar een DXF-onderlegger (data in `bijlagen`). */
+export interface DxfRef {
+  id: string;
+  naam: string;
+  bestand: string;
+  geimporteerd: string;
+  plaatsing: DxfPlacement;
+  kleur: string;
+  laagkleuren: boolean;
+  verborgenLagen: string[];
+  teksten: boolean;
+  zichtbaar: boolean;
+}
+
+export type ManualKind = 'doorrijhoogte' | 'paaltjes' | 'hekwerk' | 'nietBerijdbaar';
+
+/** Handmatig getekend obstakel (RD-coördinaten). */
+export interface ManualObject {
+  id: string;
+  soort: ManualKind;
+  geom: 'punten' | 'lijn' | 'vlak';
+  coords: [number, number][];
+  naam: string;
+  /** Doorrijhoogte: vrije hoogte boven maaiveld (m). */
+  vrijeHoogte?: number;
+  /** Paaltjes/hekwerk: hoogte boven maaiveld (m). */
+  hoogte?: number;
+  opmerking?: string;
+}
+
 export interface ProjectData {
   app: 'bouwplaats-sporthal';
   versie: 1;
@@ -32,6 +95,20 @@ export interface ProjectData {
   };
   /** Plaatsing van het ontwerpmodel (IFC) in RD/NAP; leeg = automatische plaatsing. */
   ontwerpPlaatsing?: Placement;
+  /** Eigen inmeting (fase 2). */
+  inmeting: {
+    grens?: MeasuredBoundary;
+    punten?: SurveyImport;
+    codes: Record<string, CodeRule>;
+  };
+  klic: KlicRef[];
+  onderleggers: DxfRef[];
+  handmatig: ManualObject[];
+  /**
+   * Grote, onveranderlijke importdata (KLIC, DXF) per id. Valt buiten de
+   * undo-snapshots; alleen bijlagen waarnaar verwezen wordt, worden opgeslagen.
+   */
+  bijlagen: Record<string, KlicData | DxfData>;
   /** Laagzichtbaarheid en camera (geen onderdeel van undo). */
   weergave?: { lagen?: Record<string, boolean | number | string>; camera?: number[] };
   /** Gereserveerd voor latere fases. */
@@ -46,6 +123,11 @@ export function emptyProject(naam: string): ProjectData {
     versie: 1,
     project: { naam, nummer: '', getekendDoor: '' },
     overschrijvingen: { gebouwen: {}, bomen: {}, obstakels: {} },
+    inmeting: { codes: {} },
+    klic: [],
+    onderleggers: [],
+    handmatig: [],
+    bijlagen: {},
     elementen: [],
     routes: [],
     kranen: [],
@@ -69,6 +151,12 @@ export function parseProject(text: string): ProjectData {
   p.overschrijvingen.obstakels = d.overschrijvingen?.obstakels ?? {};
   p.weergave = d.weergave;
   if (d.ontwerpPlaatsing && ['x', 'y', 'rotatie', 'peil'].every((k) => Number.isFinite(d.ontwerpPlaatsing[k]))) p.ontwerpPlaatsing = d.ontwerpPlaatsing;
+  p.inmeting = { codes: {}, ...(d.inmeting ?? {}) };
+  p.klic = Array.isArray(d.klic) ? d.klic : [];
+  p.onderleggers = Array.isArray(d.onderleggers) ? d.onderleggers : [];
+  p.handmatig = Array.isArray(d.handmatig) ? d.handmatig : [];
+  p.bijlagen = d.bijlagen && typeof d.bijlagen === 'object' ? d.bijlagen : {};
+  for (const r of [...p.klic, ...p.onderleggers]) if (!p.bijlagen[r.id]) throw new Error(`Projectbestand onvolledig: gegevens van "${'meldnummer' in r ? r.meldnummer : r.naam}" ontbreken.`);
   p.elementen = d.elementen ?? [];
   p.routes = d.routes ?? [];
   p.kranen = d.kranen ?? [];
@@ -95,13 +183,18 @@ export class ProjectStore {
   }
 
   private snapshot(): string {
-    const { weergave, ...rest } = this.data;
+    const { weergave, bijlagen, ...rest } = this.data;
     return JSON.stringify(rest);
   }
 
   private restore(snap: string) {
-    const weergave = this.data.weergave;
-    this.data = { ...JSON.parse(snap), weergave };
+    const { weergave, bijlagen } = this.data;
+    this.data = { ...JSON.parse(snap), weergave, bijlagen };
+  }
+
+  /** Voeg grote importdata toe (buiten undo om); gebruik daarna change() om ernaar te verwijzen. */
+  addBijlage(id: string, data: KlicData | DxfData) {
+    this.data.bijlagen[id] = data;
   }
 
   /** Voer een wijziging uit die ongedaan gemaakt kan worden. */
@@ -148,8 +241,14 @@ export class ProjectStore {
     this.emit('Project geladen');
   }
 
-  serialize(): string {
+  /** Alleen bijlagen waarnaar nog verwezen wordt. */
+  private usedBijlagen(): Record<string, KlicData | DxfData> {
+    const ids = new Set([...this.data.klic.map((k) => k.id), ...this.data.onderleggers.map((o) => o.id)]);
+    return Object.fromEntries(Object.entries(this.data.bijlagen).filter(([k]) => ids.has(k)));
+  }
+
+  serialize(pretty = true): string {
     this.data.opgeslagen = new Date().toISOString();
-    return JSON.stringify(this.data, null, 2);
+    return JSON.stringify({ ...this.data, bijlagen: this.usedBijlagen() }, null, pretty ? 2 : 0);
   }
 }

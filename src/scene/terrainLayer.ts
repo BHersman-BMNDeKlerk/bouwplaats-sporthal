@@ -55,6 +55,20 @@ interface Chunk {
   lines: LineItem[];
 }
 
+/** Hulpmiddelen voor extra 2D-lagen die op de terreintextuur tekenen. */
+export interface DrawContext {
+  ctx: CanvasRenderingContext2D;
+  bb: BBox;
+  /** Pixels per meter. */
+  ppm: number;
+  X: (x: number) => number;
+  Y: (y: number) => number;
+  ring: (r: number[][]) => void;
+  path: (l: number[][]) => void;
+  label: (txt: string, x: number, y: number, angleDeg: number, sizeM: number, fill: string, halo: string, bold?: boolean) => void;
+}
+export type CanvasOverlay = (c: DrawContext, L: LayerState) => void;
+
 export interface Parcel {
   id: string;
   props: Record<string, any>;
@@ -77,6 +91,11 @@ export class TerrainLayer {
   hypsoRange = { min: 0, max: 1 };
   /** Buitencontour van het ontwerpmodel in RD (of null). */
   designContour: number[][][] | null = null;
+  /** Extra 2D-lagen (KLIC, inmeting, DXF, eigen obstakels), getekend vóór de labels. */
+  readonly overlays: CanvasOverlay[] = [];
+  /** Eigen perceel (BRK) – geaccentueerd zolang er geen ingemeten grens is. */
+  ownParcelRings: number[][][] = [];
+  ownParcelHighlight = false;
   private hillCanvas: HTMLCanvasElement | null = null;
   private hypsoCanvas: HTMLCanvasElement | null = null;
 
@@ -413,6 +432,20 @@ export class TerrainLayer {
       ctx.fillText(txt, 0, 0);
       ctx.restore();
     };
+    if (L.percelen && L.eigenPerceel && this.ownParcelHighlight && this.ownParcelRings.length) {
+      ctx.beginPath();
+      for (const r of this.ownParcelRings) ring(r);
+      ctx.strokeStyle = '#c2185b';
+      ctx.lineWidth = Math.max(3, 0.45 * ppm);
+      ctx.setLineDash([2 * ppm, 1 * ppm]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    for (const o of this.overlays) {
+      ctx.save();
+      o({ ctx, bb, ppm, X, Y, ring, path, label }, L);
+      ctx.restore();
+    }
     if (L.percelen && L.perceelnummers) {
       for (const p of this.parcels) {
         const pr = p.props;

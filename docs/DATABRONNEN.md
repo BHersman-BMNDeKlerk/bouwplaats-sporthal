@@ -107,3 +107,20 @@ RD x 105440–105770, y 424510–424850 (330 × 340 m). Aan te passen met `npm r
   op tekening; aanpassen kan in de app.
 - `data/ontwerp/model.json` staat in git: alleen contour, twee hoogtes en de plaatsing (geen detailgeometrie);
   het IFC-bestand zelf niet.
+
+### KLIC (eigen invoer, fase 2)
+- Formaat: KLIC-levering van het Kadaster in **IMKL 2.0** (WIBON). De parser leest kabels en leidingen
+  (geometrie via `UtilityLink`, thema via `Utiliteitsnet`), appendages, `DiepteTovMaaiveld`/`DiepteNAP`,
+  EV-vlakken (`AanduidingEisVoorzorgsmaatregel`), annotaties, maatvoering, eigen topografie en de graafpolygoon.
+- Getest op alle 24 voorbeeldleveringen die het Kadaster publiceert (github.com/kadaster/klic-win,
+  map *Uitleveren/Voorbeelden IMKL v2.0*); een fragment staat als testfixture in `tests/fixtures`.
+- **Kleuren:** volgens de KLIC-kleurconventie per thema. Datatransport (#00ff00) en riool vrij verval (#ba38a8)
+  komen uit de IMKL 2.0-handreiking; de overige RGB-waarden moeten nog gecontroleerd worden tegen de
+  *Handreiking visualisatie IMKL 2.0* (Geonovum, docs.geostandaarden.nl – niet bereikbaar vanuit de
+  ontwikkelomgeving). Zie `KLIC_THEMAS` in `src/data/klic.ts`.
+- **Nauwkeurigheid:** zoals opgegeven door de netbeheerder (veld *Nauwkeurigheid ligging*, vaak tot 1 m).
+  Diepten zijn indicatief; volgens de WIBON altijd proefsleuven graven.
+
+### Inmeting (eigen invoer, fase 2)
+- CSV met puntnummer, X, Y, Z (RD New / NAP) en optioneel code. De ingemeten perceelgrens heeft voorrang op de
+  BRK-grens (`src/core/boundary.ts`); bij import wordt de afwijking t.o.v. de BRK-grens en het AHN-maaiveld getoond.

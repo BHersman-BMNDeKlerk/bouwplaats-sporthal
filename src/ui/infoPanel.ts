@@ -11,6 +11,14 @@ import type { Parcel } from '../scene/terrainLayer';
 import { effectiveTree } from '../scene/treesLayer';
 import type { TreeRecord } from '../data/types';
 import { h, parseNum } from './dom';
+import type { ManualObject } from '../core/project';
+import type { MeetPunt } from '../data/csvPoints';
+import { PUNT_SOORTEN } from '../data/csvPoints';
+import { nearestDepth, themaStyle, type KlicData, type KlicLine } from '../data/klic';
+import type { DxfData } from '../data/dxf';
+import { MANUAL_STYLE, soortVan } from '../scene/overlays';
+import { polylineLength, activeBoundary, type ActiveBoundary } from '../core/boundary';
+import { ringArea } from '../data/geom';
 
 export class InfoPanel {
   constructor(private readonly root: HTMLElement, private readonly store: ProjectStore, private readonly onClose: () => void) {}
@@ -20,7 +28,7 @@ export class InfoPanel {
     this.root.innerHTML = '';
   }
 
-  private open(title: string, sub: string, ...content: (Node | null)[]) {
+  open(title: string, sub: string, ...content: (Node | null)[]) {
     this.root.hidden = false;
     this.root.innerHTML = '';
     this.root.append(
@@ -264,6 +272,162 @@ export class InfoPanel {
     }
     this.open('Locatie', 'Klik op een gebouw, boom of obstakel voor details', ...items);
   }
+
+  // ------------------------------------------------------------------ KLIC
+  showKlic(refId: string, line: KlicLine, x: number, y: number) {
+    const ref = this.store.data.klic.find((k) => k.id === refId);
+    const k = this.store.data.bijlagen[refId] as KlicData | undefined;
+    const st = themaStyle(line.thema);
+    const d = k ? nearestDepth(k.diepten, x, y, line.thema, 5) : null;
+    const typeNL: Record<string, string> = {
+      Elektriciteitskabel: 'Elektriciteitskabel', OlieGasChemicalienPijpleiding: 'Gas-/olieleiding', Rioolleiding: 'Rioolleiding', Waterleiding: 'Waterleiding',
+      Telecommunicatiekabel: 'Telecomkabel', Thermischepijpleiding: 'Warmteleiding', Kabelbed: 'Kabelbed', Duct: 'Kabelgoot/duct', Mantelbuis: 'Mantelbuis', Overig: 'Overige leiding',
+    };
+    this.open(`${typeNL[line.type] ?? line.type}`, `KLIC ${ref?.meldnummer ?? ''} · ${line.beheerder}`,
+      h('div', { class: 'kv' }, h('span', { class: 'swatch', style: { display: 'inline-block', width: '26px', height: '5px', background: st.kleur, verticalAlign: 'middle', marginRight: '6px' } }), h('b', {}, st.label), ` · ${line.status}`),
+      h('table', {},
+        ...Object.entries(line.props).map(([kk, v]) => h('tr', {}, h('td', {}, kk), h('td', {}, String(v)))),
+        h('tr', {}, h('td', {}, 'Diepte (dichtstbij, ≤ 5 m)'), h('td', {}, d ? `${d.soort === 'NAP' ? `${d.waarde.toLocaleString('nl-NL')} m NAP` : `${d.waarde.toLocaleString('nl-NL')} m onder maaiveld`}${d.aangrijping ? ` (${d.aangrijping})` : ''}${d.nauwkeurigheid ? `, nauwkeurigheid ${d.nauwkeurigheid}` : ''}` : 'niet opgegeven')),
+      ),
+      h('div', { class: 'note warn', style: { marginLeft: 0 } }, 'Ligging en diepte zijn indicatief. Volgens de WIBON: proefsleuven graven en bij twijfel de netbeheerder raadplegen.'),
+    );
+  }
+
+  showKlicRef(refId: string, onRemove: () => void) {
+    const ref = this.store.data.klic.find((k) => k.id === refId);
+    const k = this.store.data.bijlagen[refId] as KlicData | undefined;
+    if (!ref || !k) return this.hide();
+    this.open(`KLIC-levering ${ref.meldnummer}`, `${ref.referentie} · geïmporteerd ${new Date(ref.geimporteerd).toLocaleDateString('nl-NL')}`,
+      h('table', {},
+        h('tr', {}, h('td', {}, 'Bestand'), h('td', {}, ref.bestand)),
+        h('tr', {}, h('td', {}, 'Levering samengesteld'), h('td', {}, ref.datumLevering ? new Date(ref.datumLevering).toLocaleString('nl-NL') : '–')),
+        h('tr', {}, h('td', {}, 'Netbeheerders'), h('td', {}, k.beheerders.map((b) => b.naam).join(', '))),
+        h('tr', {}, h('td', {}, 'Kabels/leidingen'), h('td', {}, String(k.lijnen.length))),
+        h('tr', {}, h('td', {}, 'Diepte-aanduidingen'), h('td', {}, String(k.diepten.length))),
+        h('tr', {}, h('td', {}, 'EV-vlakken'), h('td', {}, String(k.ev.length))),
+      ),
+      h('div', { class: 'btnrow' }, h('button', { onclick: () => { if (confirm(`KLIC-levering ${ref.meldnummer} uit het project verwijderen?`)) onRemove(); } }, 'Levering verwijderen')),
+    );
+  }
+
+  // ------------------------------------------------------------------ inmeting
+  showMeetpunt(pt: MeetPunt, isGrens: boolean, maaiveld: number | null) {
+    const soort = isGrens ? null : soortVan(this.store.data, pt);
+    const dz = pt.z != null && maaiveld != null ? pt.z - maaiveld : null;
+    this.open(`${isGrens ? 'Grenspunt' : 'Meetpunt'} ${pt.nr}`, isGrens ? 'Ingemeten perceelgrens' : `${soort ? PUNT_SOORTEN[soort].label : ''}${pt.code ? ` · code ${pt.code}` : ''}`,
+      h('table', {},
+        h('tr', {}, h('td', {}, 'RD'), h('td', { class: 'num' }, fmtRD(pt.x, pt.y, 3))),
+        h('tr', {}, h('td', {}, 'Z ingemeten'), h('td', { class: 'num' }, pt.z != null ? fmtNAP(pt.z, 3) : '–')),
+        h('tr', {}, h('td', {}, 'AHN-maaiveld'), h('td', { class: 'num' }, fmtNAP(maaiveld))),
+        h('tr', {}, h('td', {}, 'Verschil Z − AHN'), h('td', { class: 'num' }, dz != null ? `${dz >= 0 ? '+' : ''}${dz.toLocaleString('nl-NL', { maximumFractionDigits: 2, minimumFractionDigits: 2 })} m` : '–')),
+      ),
+    );
+  }
+
+  showGrens(onRemove: () => void, onToggleClosed: () => void, brkLines: number[][][], own: { props: Record<string, any>; polys: number[][][][] }[]) {
+    const g = this.store.data.inmeting.grens;
+    const ab: ActiveBoundary = activeBoundary(g, own);
+    if (!g) {
+      return this.open('Perceelgrens', ab.omschrijving,
+        h('div', { class: 'note warn', style: { marginLeft: 0 } }, ab.waarschuwing ?? ''),
+        h('p', {}, 'Importeer de ingemeten grens via Importeren → Ingemeten perceelgrens (CSV). Die heeft daarna voorrang bij alle controles.'));
+    }
+    const ring = ab.lijnen[0] ?? [];
+    void brkLines;
+    this.open('Ingemeten perceelgrens', `${g.bestand} · ${g.punten.length} punten · ${new Date(g.geimporteerd).toLocaleDateString('nl-NL')}`,
+      h('div', { class: 'note', style: { marginLeft: 0 } }, 'Actief: deze grens heeft voorrang op de BRK-grens bij alle controles (overdraai, hekwerk, overlap).'),
+      h('table', {},
+        h('tr', {}, h('td', {}, 'Lengte'), h('td', { class: 'num' }, `${polylineLength(ring).toLocaleString('nl-NL', { maximumFractionDigits: 2 })} m`)),
+        g.gesloten ? h('tr', {}, h('td', {}, 'Oppervlakte'), h('td', { class: 'num' }, `${ringArea(ring).toLocaleString('nl-NL', { maximumFractionDigits: 1 })} m²`)) : null,
+        h('tr', {}, h('td', {}, 'Gesloten'), h('td', {}, g.gesloten ? 'ja' : 'nee')),
+      ),
+      h('div', { class: 'btnrow' },
+        h('button', { onclick: onToggleClosed }, g.gesloten ? 'Open lijn maken' : 'Sluiten (laatste → eerste punt)'),
+        h('button', { onclick: () => { if (confirm('Ingemeten perceelgrens verwijderen? De BRK-grens wordt dan weer (indicatief) gebruikt.')) onRemove(); } }, 'Verwijderen')),
+    );
+  }
+
+  // ------------------------------------------------------------------ eigen obstakels
+  showManual(o: ManualObject, onDelete: () => void) {
+    const st = MANUAL_STYLE[o.soort];
+    const iNaam = h('input', { type: 'text', value: o.naam });
+    const needsH = o.soort === 'paaltjes' || o.soort === 'hekwerk';
+    const iH = h('input', { type: 'text', inputmode: 'decimal', value: String((o.soort === 'doorrijhoogte' ? o.vrijeHoogte : o.hoogte) ?? '').replace('.', ',') });
+    const iNote = h('input', { type: 'text', value: o.opmerking ?? '', placeholder: 'opmerking' });
+    const save = () => {
+      const v = parseNum(iH.value);
+      if ((o.soort === 'doorrijhoogte' || needsH) && (v == null || Number.isNaN(v) || v <= 0)) { alert('Vul een geldige hoogte in (m).'); return; }
+      this.store.change(`${st.label} aangepast`, (d) => {
+        const x = d.handmatig.find((q) => q.id === o.id);
+        if (!x) return;
+        x.naam = iNaam.value.trim();
+        x.opmerking = iNote.value.trim() || undefined;
+        if (o.soort === 'doorrijhoogte') x.vrijeHoogte = v!;
+        else if (needsH) x.hoogte = v!;
+      });
+    };
+    for (const i of [iNaam, iH, iNote]) i.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') save(); ev.stopPropagation(); });
+    const len = o.geom !== 'punten' ? polylineLength(o.geom === 'vlak' ? [...o.coords, o.coords[0]] : o.coords) : 0;
+    this.open(st.label, `Eigen obstakel · ${o.geom === 'punten' ? `${o.coords.length} punt(en)` : o.geom === 'lijn' ? `lijn ${len.toLocaleString('nl-NL', { maximumFractionDigits: 2 })} m` : `vlak ${ringArea([...o.coords, o.coords[0]]).toLocaleString('nl-NL', { maximumFractionDigits: 1 })} m²`}`,
+      h('fieldset', {},
+        h('legend', {}, 'Eigenschappen'),
+        h('div', { class: 'frow' }, 'Naam', iNaam),
+        o.soort !== 'nietBerijdbaar' ? h('div', { class: 'frow' }, o.soort === 'doorrijhoogte' ? 'Vrije hoogte boven maaiveld (m)' : 'Hoogte (m)', iH) : null,
+        h('div', { class: 'frow', style: { gridTemplateColumns: '1fr' } }, iNote),
+        h('div', { class: 'btnrow' },
+          h('button', { class: 'primary', onclick: save }, 'Toepassen'),
+          h('button', { onclick: () => { if (confirm(`${st.label} verwijderen?`)) onDelete(); } }, 'Verwijderen')),
+      ),
+      o.soort === 'doorrijhoogte' ? h('div', { class: 'note', style: { marginLeft: 0 } }, 'Wordt in fase 4 gebruikt voor de conflictcontrole met de voertuighoogte.') : null,
+      o.soort === 'nietBerijdbaar' ? h('div', { class: 'note', style: { marginLeft: 0 } }, 'Vlak waar voertuigen niet mogen of kunnen rijden (fase 4).') : null,
+    );
+  }
+
+  // ------------------------------------------------------------------ DXF
+  showDxf(refId: string, ifcAvailable: boolean, onRemove: () => void) {
+    const ref = this.store.data.onderleggers.find((o) => o.id === refId);
+    const d = this.store.data.bijlagen[refId] as DxfData | undefined;
+    if (!ref || !d) return this.hide();
+    const p = ref.plaatsing;
+    let mode = p.modus;
+    const radio = (m: typeof mode, label: string, dis = false) => h('label', { class: 'lrow' }, h('input', { type: 'radio', name: 'dxfm', checked: m === mode, disabled: dis, onchange: () => (mode = m) }), label);
+    const iX = h('input', { type: 'text', value: String(p.x).replace('.', ',') }), iY = h('input', { type: 'text', value: String(p.y).replace('.', ',') }), iR = h('input', { type: 'text', value: String(p.rotatie).replace('.', ',') });
+    const unit = h('select', {}, ...[[0.001, 'millimeter'], [0.01, 'centimeter'], [1, 'meter']].map(([v, l]) => h('option', { value: String(v), selected: Math.abs((v as number) - p.eenheidM) < 1e-9 }, l as string)));
+    const color = h('input', { type: 'color', value: ref.kleur, style: { width: '60px', padding: 0 } });
+    const lagen = h('div', { style: { maxHeight: '220px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px', padding: '4px 8px' } },
+      ...d.lagen.map((l) => h('label', { class: 'lrow', style: { fontSize: '12px' } },
+        h('input', { type: 'checkbox', checked: !ref.verborgenLagen.includes(l.naam), 'data-laag': l.naam }),
+        h('span', { class: 'swatch', style: { background: l.kleur } }), `${l.naam} (${l.aantal})`)));
+    const laagkleur = h('input', { type: 'checkbox', checked: ref.laagkleuren });
+    const teksten = h('input', { type: 'checkbox', checked: ref.teksten });
+    const apply = () => {
+      const hidden = [...lagen.querySelectorAll('input')].filter((i) => !(i as HTMLInputElement).checked).map((i) => (i as HTMLElement).dataset.laag!);
+      this.store.change(`Onderlegger ${ref.naam} aangepast`, (dd) => {
+        const r = dd.onderleggers.find((o) => o.id === refId)!;
+        r.plaatsing = { modus: mode, x: parseNum(iX.value) ?? p.x, y: parseNum(iY.value) ?? p.y, rotatie: parseNum(iR.value) ?? p.rotatie, eenheidM: Number(unit.value) };
+        r.kleur = color.value;
+        r.laagkleuren = laagkleur.checked;
+        r.teksten = teksten.checked;
+        r.verborgenLagen = hidden;
+      });
+    };
+    this.open(`Onderlegger ${ref.naam}`, `${ref.bestand} · ${d.lijnen.length.toLocaleString('nl-NL')} lijnen`,
+      h('fieldset', {}, h('legend', {}, 'Plaatsing'),
+        radio('rd', 'Coördinaten zijn RD'), radio('ifc', 'Nulpunt van het IFC-model', !ifcAvailable), radio('handmatig', 'Handmatig'),
+        h('div', { class: 'frow' }, 'X (RD)', iX), h('div', { class: 'frow' }, 'Y (RD)', iY), h('div', { class: 'frow' }, 'Rotatie (°)', iR),
+        h('div', { class: 'frow' }, 'Eenheid', unit)),
+      h('fieldset', {}, h('legend', {}, 'Weergave'),
+        h('div', { class: 'frow' }, 'Kleur', color),
+        h('label', { class: 'lrow' }, laagkleur, 'Laagkleuren uit de DXF gebruiken'),
+        h('label', { class: 'lrow' }, teksten, 'Teksten tonen'),
+        h('div', { class: 'note', style: { marginLeft: 0 } }, 'Lagen:'), lagen),
+      d.waarschuwingen.length ? h('div', { class: 'note warn', style: { marginLeft: 0 } }, d.waarschuwingen.join(' ')) : null,
+      h('div', { class: 'btnrow' },
+        h('button', { class: 'primary', onclick: apply }, 'Toepassen'),
+        h('button', { onclick: () => { if (confirm(`Onderlegger ${ref.naam} verwijderen?`)) onRemove(); } }, 'Verwijderen')),
+    );
+  }
+
 }
 
 function dakTypeNL(t: string | null): string {

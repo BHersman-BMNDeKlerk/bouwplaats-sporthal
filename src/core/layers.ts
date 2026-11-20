@@ -19,6 +19,20 @@ export interface LayerState {
   obstakels: Record<string, boolean>;
   projectgebied: boolean;
   lagenVersie: number;
+  /** Fase 2 */
+  eigenPerceel: boolean;
+  grens: boolean;
+  grensMaten: boolean;
+  meetpunten: Record<string, boolean>;
+  meetpuntLabels: boolean;
+  klicThemas: Record<string, boolean>;
+  klicDiepte: boolean;
+  klicEv: boolean;
+  klicAnnotatie: boolean;
+  klicMaatvoering: boolean;
+  klicPunten: boolean;
+  klicGraafpolygoon: boolean;
+  handmatig: Record<string, boolean>;
   ontwerp: boolean;
   ontwerpContour: boolean;
   ontwerpTransparant: boolean;
@@ -45,6 +59,19 @@ export function defaultLayers(): LayerState {
     obstakels: Object.fromEntries(OBSTACLE_CATEGORIES.map((c) => [c, true])),
     projectgebied: true,
     lagenVersie: 2,
+    eigenPerceel: true,
+    grens: true,
+    grensMaten: true,
+    meetpunten: { paal: true, putdeksel: true, boom: true, hoogtemaat: true, grenspunt: true, overig: true },
+    meetpuntLabels: true,
+    klicThemas: {},
+    klicDiepte: true,
+    klicEv: true,
+    klicAnnotatie: true,
+    klicMaatvoering: false,
+    klicPunten: true,
+    klicGraafpolygoon: true,
+    handmatig: { doorrijhoogte: true, paaltjes: true, hekwerk: true, nietBerijdbaar: true },
     ontwerp: true,
     ontwerpContour: true,
     ontwerpTransparant: false,

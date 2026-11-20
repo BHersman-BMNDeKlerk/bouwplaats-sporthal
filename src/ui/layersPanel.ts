@@ -6,6 +6,11 @@ import { HEIGHT_STOPS } from '../scene/buildingsLayer';
 import { HYPSO_STOPS } from '../scene/terrainLayer';
 import { TREE_COLORS } from '../scene/treesLayer';
 import { h } from './dom';
+import type { ProjectData } from '../core/project';
+import type { ActiveBoundary } from '../core/boundary';
+import { PUNT_SOORTEN, type PuntSoort } from '../data/csvPoints';
+import { KLIC_KLEUREN_GEVERIFIEERD, themaStyle, type KlicData } from '../data/klic';
+import { MANUAL_STYLE, soortVan } from '../scene/overlays';
 
 export interface LayersPanelOpts {
   root: HTMLElement;
@@ -19,6 +24,11 @@ export interface LayersPanelOpts {
   /** Open het plaatsingsvenster van het ontwerpmodel. */
   onDesignPlacement?: () => void;
   designPlacementIsAuto?: boolean;
+  /** Fase 2 */
+  project: ProjectData;
+  boundary: ActiveBoundary;
+  onRefVisible: (kind: 'klic' | 'dxf', id: string, v: boolean) => void;
+  onOpen: (what: { kind: 'klicRef' | 'dxf'; id: string } | { kind: 'grens' } | { kind: 'codes' }) => void;
 }
 
 export function renderLayersPanel(o: LayersPanelOpts) {
@@ -105,6 +115,74 @@ export function renderLayersPanel(o: LayersPanelOpts) {
   root.append(check('Perceelgrenzen', () => L.percelen, (v) => (L.percelen = v), 'terrain', { disabled: !data.percelen, swatch: swatch(undefined, '#c2185b') }));
   root.append(check('Perceelnummers', () => L.perceelnummers, (v) => (L.perceelnummers = v), 'terrain', { sub: true }));
   root.append(h('div', { class: 'note warn' }, '⚠ Indicatieve grens (BRK). Niet ingemeten – niet gebruiken voor uitzetten of grenscontrole.'));
+
+  // --- Perceelgrens en inmeting
+  const P = o.project;
+  const link = (txt: string, fn: () => void) => h('a', { href: '#', onclick: (e: Event) => { e.preventDefault(); fn(); } }, txt);
+  root.append(h('h2', {}, 'Perceelgrens en inmeting'));
+  root.append(h('div', { class: o.boundary.bron === 'ingemeten' ? 'note' : 'note warn', style: o.boundary.bron === 'ingemeten' ? { marginLeft: 0, color: '#1b5e20' } : {} },
+    o.boundary.bron === 'ingemeten' ? `✔ ${o.boundary.omschrijving} – heeft voorrang bij alle controles. ` : `⚠ ${o.boundary.waarschuwing} Gebruikt: ${o.boundary.omschrijving}. `,
+    link(o.boundary.bron === 'ingemeten' ? 'Beheren' : 'Uitleg', () => o.onOpen({ kind: 'grens' }))));
+  if (P.inmeting.grens) {
+    root.append(check(`Ingemeten grens (${P.inmeting.grens.punten.length} punten)`, () => L.grens, (v) => (L.grens = v), 'all', { swatch: swatch(undefined, '#e65100') }));
+    root.append(check('Maten langs de grens', () => L.grensMaten, (v) => (L.grensMaten = v), 'terrain', { sub: true }));
+  } else {
+    root.append(check('Eigen perceel (BRK) markeren', () => L.eigenPerceel, (v) => (L.eigenPerceel = v), 'terrain', { swatch: swatch(undefined, '#c2185b') }));
+  }
+  const mp = P.inmeting.punten;
+  if (mp) {
+    const counts: Partial<Record<PuntSoort, number>> = {};
+    for (const pt of mp.punten) { const so = soortVan(P, pt); counts[so] = (counts[so] ?? 0) + 1; }
+    root.append(h('div', { class: 'note', style: { marginLeft: 0 } }, `Meetpunten: ${mp.bestand} (${mp.punten.length}) · `, link('codes', () => o.onOpen({ kind: 'codes' }))));
+    for (const so of Object.keys(PUNT_SOORTEN) as PuntSoort[]) {
+      if (so === 'negeren' || !counts[so]) continue;
+      root.append(check(`${PUNT_SOORTEN[so].label} (${counts[so]})`, () => L.meetpunten[so] !== false, (v) => (L.meetpunten[so] = v), 'all', { sub: true, swatch: swatch(PUNT_SOORTEN[so].kleur) }));
+    }
+    root.append(check('Puntnummers en codes', () => L.meetpuntLabels, (v) => (L.meetpuntLabels = v), 'terrain', { sub: true }));
+  }
+
+  // --- KLIC
+  if (P.klic.length) {
+    root.append(h('h2', {}, 'Kabels en leidingen (KLIC)'));
+    const themaCount = new Map<string, number>();
+    for (const ref of P.klic) {
+      root.append(h('div', { class: 'lrow' },
+        h('input', { type: 'checkbox', checked: ref.zichtbaar, onchange: (e: Event) => o.onRefVisible('klic', ref.id, (e.target as HTMLInputElement).checked) }),
+        h('span', {}, `Melding ${ref.meldnummer || ref.bestand} `, link('details', () => o.onOpen({ kind: 'klicRef', id: ref.id })))));
+      const k = P.bijlagen[ref.id] as KlicData | undefined;
+      if (k && ref.zichtbaar) for (const [t, n] of Object.entries(k.themas)) themaCount.set(t, (themaCount.get(t) ?? 0) + n);
+    }
+    for (const [t, n] of [...themaCount].sort((a, b) => b[1] - a[1])) {
+      const st = themaStyle(t);
+      root.append(check(`${st.label} (${n})`, () => L.klicThemas[t] !== false, (v) => (L.klicThemas[t] = v), 'terrain', { sub: true, swatch: h('span', { class: 'swatch line', style: { background: st.kleur, height: '5px' } }) }));
+    }
+    root.append(check('Diepte-aanduidingen', () => L.klicDiepte, (v) => (L.klicDiepte = v), 'terrain', { sub: true }));
+    root.append(check('EV-vlakken (eis voorzorgsmaatregel)', () => L.klicEv, (v) => (L.klicEv = v), 'terrain', { sub: true }));
+    root.append(check('Annotaties', () => L.klicAnnotatie, (v) => (L.klicAnnotatie = v), 'terrain', { sub: true }));
+    root.append(check('Maatvoering', () => L.klicMaatvoering, (v) => (L.klicMaatvoering = v), 'terrain', { sub: true }));
+    root.append(check('Appendages (moffen, kasten, …)', () => L.klicPunten, (v) => (L.klicPunten = v), 'terrain', { sub: true }));
+    root.append(check('Graafpolygoon', () => L.klicGraafpolygoon, (v) => (L.klicGraafpolygoon = v), 'terrain', { sub: true }));
+    if (!KLIC_KLEUREN_GEVERIFIEERD) root.append(h('div', { class: 'note' }, 'Kleuren volgens de KLIC-kleurconventie; nog niet alle RGB-waarden gecontroleerd tegen de officiële handreiking.'));
+  }
+
+  // --- Onderleggers
+  if (P.onderleggers.length) {
+    root.append(h('h2', {}, 'Onderleggers (DXF)'));
+    for (const ref of P.onderleggers)
+      root.append(h('div', { class: 'lrow' },
+        h('input', { type: 'checkbox', checked: ref.zichtbaar, onchange: (e: Event) => o.onRefVisible('dxf', ref.id, (e.target as HTMLInputElement).checked) }),
+        h('span', { class: 'swatch line', style: { background: ref.kleur, height: '4px' } }),
+        h('span', {}, `${ref.naam} `, link('instellingen', () => o.onOpen({ kind: 'dxf', id: ref.id })))));
+  }
+
+  // --- Eigen obstakels
+  if (P.handmatig.length) {
+    root.append(h('h2', {}, 'Eigen obstakels'));
+    const cnt: Record<string, number> = {};
+    for (const m of P.handmatig) cnt[m.soort] = (cnt[m.soort] ?? 0) + 1;
+    for (const [k, st] of Object.entries(MANUAL_STYLE))
+      if (cnt[k]) root.append(check(`${st.label} (${cnt[k]})`, () => L.handmatig[k] !== false, (v) => (L.handmatig[k] = v), 'all', { swatch: swatch(st.kleur) }));
+  }
 
   // --- Bomen & obstakels
   root.append(h('h2', {}, 'Bomen en obstakels'));

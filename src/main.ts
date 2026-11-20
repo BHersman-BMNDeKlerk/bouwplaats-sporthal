@@ -18,6 +18,14 @@ import { closeModal, helpContent, modalOpen, openModal, sourcesContent } from '.
 import { $, escapeHtml, h } from './ui/dom';
 import { InfoPanel } from './ui/infoPanel';
 import { renderLayersPanel } from './ui/layersPanel';
+import { loadLocal, saveLocal } from './core/storage';
+import { activeBoundary, ownParcels, type ActiveBoundary } from './core/boundary';
+import type { ManualKind, ManualObject } from './core/project';
+import { dxfOverlay, GRENS_KLEUR, hitKlic, hitManual, hitSurvey, klicOverlay, MANUAL_STYLE, manualOverlay, surveyOverlay, type KlicHit, type SurveyHit } from './scene/overlays';
+import { UserLayer } from './scene/userLayer';
+import { DrawTool, type DrawGeom } from './scene/drawTool';
+import { editCodes, importBoundary, importDxf, importKlic, importPoints, type ImportContext } from './ui/importDialogs';
+import { themaStyle } from './data/klic';
 
 const AUTOSAVE_KEY = 'bouwplaats-sporthal-latourpad:project';
 
@@ -27,6 +35,12 @@ type Selection =
   | { kind: 'obstacle'; id: string }
   | { kind: 'terrain'; x: number; y: number }
   | { kind: 'design'; zone: number | null }
+  | { kind: 'klic'; refId: string; lineId: string; x: number; y: number }
+  | { kind: 'meetpunt'; index: number; grens: boolean }
+  | { kind: 'manual'; id: string }
+  | { kind: 'grens' }
+  | { kind: 'klicRef'; id: string }
+  | { kind: 'dxf'; id: string }
   | null;
 
 async function start() {
@@ -62,18 +76,33 @@ async function start() {
   // --- project
   let initial: ProjectData = emptyProject(PROJECT.naam);
   try {
-    const saved = localStorage.getItem(AUTOSAVE_KEY);
+    const saved = await loadLocal(AUTOSAVE_KEY);
     if (saved) initial = parseProject(saved);
-  } catch { /* geen opslag beschikbaar */ }
+  } catch (e) { console.warn('Automatisch opgeslagen project niet te lezen', e); }
   const store = new ProjectStore(initial);
   let L: LayerState = mergeLayers(initial.weergave?.lagen);
   // Met een ontwerpmodel is het bestaande pand standaard transparant (anders vallen oud en nieuw door elkaar).
   if (data.design && !initial.weergave?.lagen?.sporthal) L.sporthal = 'transparant';
 
+  let autosaveTimer = 0;
   const autosave = () => {
     store.data.weergave = { ...(store.data.weergave ?? {}), lagen: L as any };
-    try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(store.data)); } catch { /* negeren */ }
+    clearTimeout(autosaveTimer);
+    autosaveTimer = window.setTimeout(() => { void saveLocal(AUTOSAVE_KEY, store.serialize(false)); }, 800);
   };
+
+  // --- eigen invoer (fase 2)
+  const userLayer = new UserLayer(frame, (x, y) => terrain.heightAt(x, y));
+  viewer.scene.add(userLayer.group);
+  const drawTool = new DrawTool(frame, (x, y) => terrain.heightAt(x, y), (msg) => status(msg, 0));
+  viewer.scene.add(drawTool.group);
+  let selectedManual: string | null = null;
+  terrain.overlays.push(
+    dxfOverlay(() => store.data, () => designPlacement()),
+    klicOverlay(() => store.data),
+    manualOverlay(() => store.data, () => selectedManual),
+    surveyOverlay(() => store.data),
+  );
 
   // --- UI
   const info = new InfoPanel($('info'), store, () => select(null));
@@ -84,8 +113,25 @@ async function start() {
   for (const o of obstacles.items) obstacleCounts[o.spec.categorie] = (obstacleCounts[o.spec.categorie] ?? 0) + 1;
 
   const designPlacement = (): Placement | null => (design ? store.data.ontwerpPlaatsing ?? design.model.plaatsingAuto : null);
+  // eigen perceel (BRK) rond de sporthal / het nieuwe pand
+  const ownFootprint = (): number[][][] => {
+    const p = designPlacement();
+    if (design && p) return placeRings(p, design.model.contour);
+    return buildings?.sporthal?.rec.footprint ?? [];
+  };
+  const own = data.percelen ? ownParcels(data.percelen.features, ownFootprint()) : [];
+  terrain.ownParcelRings = own.flatMap((p) => p.polys.map((pl) => pl[0]));
+  const boundary = (): ActiveBoundary => activeBoundary(store.data.inmeting.grens, own);
   let contourKey = '';
+  let overlayKey = '';
   const applyScene = () => {
+    // 2D-lagen opnieuw tekenen als de eigen invoer veranderd is
+    const d = store.data;
+    const ok = JSON.stringify([d.inmeting, d.klic, d.onderleggers, d.handmatig, selectedManual]);
+    terrain.ownParcelHighlight = !d.inmeting.grens;
+    if (ok !== overlayKey) { overlayKey = ok; terrain.redraw(L); }
+    userLayer.apply(d, L, selectedManual);
+    renderWarnings(data, boundary());
     const ov = store.data.overschrijvingen;
     buildings?.apply(L, ov.gebouwen);
     trees?.apply(L.bomen, ov.bomen);
@@ -110,6 +156,20 @@ async function start() {
       root: $('layers'), data, state: L, hypsoRange: terrain.hypsoRange, presentClasses, obstacleCounts,
       designPlacementIsAuto: !store.data.ontwerpPlaatsing,
       onDesignPlacement: () => select({ kind: 'design', zone: null }),
+      project: store.data,
+      boundary: boundary(),
+      onRefVisible: (kind, id, v) => {
+        const r = kind === 'klic' ? store.data.klic.find((k) => k.id === id) : store.data.onderleggers.find((k) => k.id === id);
+        if (r) r.zichtbaar = v;
+        terrain.redraw(L);
+        renderPanel();
+        autosave();
+      },
+      onOpen: (w) => {
+        if (w.kind === 'codes') editCodes(importCtx);
+        else if (w.kind === 'grens') select({ kind: 'grens' });
+        else select({ kind: w.kind, id: w.id });
+      },
       onChange: (_s, what) => {
         if (what === 'terrain' || what === 'all') terrain.redraw(L);
         if (what === 'scene' || what === 'all') applyScene();
@@ -121,7 +181,6 @@ async function start() {
   terrain.redraw(L);
   applyScene();
   renderPanel();
-  renderWarnings(data);
 
   // --- undo/redo-knoppen
   const btnUndo = $('btnUndo') as HTMLButtonElement, btnRedo = $('btnRedo') as HTMLButtonElement;
@@ -149,6 +208,9 @@ async function start() {
     design?.setHighlight(s?.kind === 'design');
     obstacles.setSelected(s?.kind === 'obstacle' ? obstacles.byId.get(s.id) ?? null : null);
     obstacles.apply(L, store.data.overschrijvingen.obstakels);
+    const prevManual = selectedManual;
+    selectedManual = s?.kind === 'manual' ? s.id : null;
+    if (prevManual !== selectedManual) applyScene();
     refreshInfo();
   }
   function refreshInfo() {
@@ -158,6 +220,27 @@ async function start() {
     else if (s.kind === 'tree' && trees) info.showTree(trees.trees[s.index]);
     else if (s.kind === 'obstacle') { const o = obstacles.byId.get(s.id); if (o) info.showObstacle(o); }
     else if (s.kind === 'design' && design) info.showDesign(design.model, s.zone, designMaaiveld());
+    else if (s.kind === 'klic') {
+      const k = store.data.bijlagen[s.refId] as any;
+      const line = k?.lijnen.find((l: any) => l.id === s.lineId);
+      if (line) info.showKlic(s.refId, line, s.x, s.y); else info.hide();
+    } else if (s.kind === 'meetpunt') {
+      const pt = s.grens ? store.data.inmeting.grens?.punten[s.index] : store.data.inmeting.punten?.punten[s.index];
+      if (pt) info.showMeetpunt(pt, s.grens, terrain.heightAt(pt.x, pt.y)); else info.hide();
+    } else if (s.kind === 'manual') {
+      const o = store.data.handmatig.find((q) => q.id === s.id);
+      if (o) info.showManual(o, () => { store.change(`${MANUAL_STYLE[o.soort].label} verwijderd`, (d) => { d.handmatig = d.handmatig.filter((q) => q.id !== o.id); }); select(null); });
+      else info.hide();
+    } else if (s.kind === 'grens') {
+      info.showGrens(
+        () => { store.change('Ingemeten perceelgrens verwijderd', (d) => { delete d.inmeting.grens; }); select(null); },
+        () => store.change('Grens open/gesloten', (d) => { if (d.inmeting.grens) d.inmeting.grens.gesloten = !d.inmeting.grens.gesloten; }),
+        terrain.ownParcelRings, own);
+    } else if (s.kind === 'klicRef') {
+      info.showKlicRef(s.id, () => { store.change('KLIC-levering verwijderd', (d) => { d.klic = d.klic.filter((k) => k.id !== s.id); }); select(null); });
+    } else if (s.kind === 'dxf') {
+      info.showDxf(s.id, !!design, () => { store.change('Onderlegger verwijderd', (d) => { d.onderleggers = d.onderleggers.filter((k) => k.id !== s.id); }); select(null); });
+    }
     else if (s.kind === 'terrain') {
       const bgt = terrain.bgtAt(s.x, s.y, L);
       info.showTerrain(s.x, s.y, terrain.heightAt(s.x, s.y), terrain.measuredAt(s.x, s.y), bgt, L.percelen ? terrain.parcelAt(s.x, s.y) : null);
@@ -172,12 +255,21 @@ async function start() {
     | { kind: 'tree'; index: number; point: THREE.Vector3 }
     | { kind: 'obstacle'; o: Obstacle; point: THREE.Vector3 }
     | { kind: 'design'; zone: number; point: THREE.Vector3 }
+    | { kind: 'manual'; o: ManualObject; point: THREE.Vector3 }
+    | { kind: 'survey'; s: SurveyHit; point: THREE.Vector3 }
+    | { kind: 'klic'; k: KlicHit; point: THREE.Vector3 }
     | { kind: 'terrain'; point: THREE.Vector3 };
+  /** Meters per schermpixel op een punt (voor aanwijstoleranties). */
+  const mppAt = (p: THREE.Vector3) => {
+    if (viewer.mode === '2d') return viewer.metersPerPixel();
+    const d = viewer.perspCam.position.distanceTo(p);
+    return (2 * d * Math.tan(THREE.MathUtils.degToRad(viewer.perspCam.fov / 2))) / Math.max(1, canvas.clientHeight);
+  };
   const pick = (ev: PointerEvent | MouseEvent): Hit | null => {
     const rect = viewer.renderer.domElement.getBoundingClientRect();
     ndc.set(((ev.clientX - rect.left) / rect.width) * 2 - 1, -((ev.clientY - rect.top) / rect.height) * 2 + 1);
     raycaster.setFromCamera(ndc, viewer.camera);
-    const targets: THREE.Object3D[] = [...(buildings?.pickable() ?? []), ...obstacles.pickable(), ...(design?.pickable() ?? [])];
+    const targets: THREE.Object3D[] = [...(buildings?.pickable() ?? []), ...obstacles.pickable(), ...(design?.pickable() ?? []), ...userLayer.pickable()];
     if (trees && trees.group.visible) targets.push(trees.crowns);
     const hits = raycaster.intersectObjects(targets, true);
     const tp = terrain.intersectRay(raycaster.ray);
@@ -191,8 +283,22 @@ async function start() {
       if (o.userData.kind === 'tree' && hit.instanceId != null) return { kind: 'tree', index: hit.instanceId, point: hit.point };
       if (o.userData.kind === 'obstacle') return { kind: 'obstacle', o: obstacles.byId.get(o.userData.id)!, point: hit.point };
       if (o.userData.kind === 'design') return { kind: 'design', zone: o.userData.zone, point: hit.point };
+      if (o.userData.kind === 'manual') { const mo = store.data.handmatig.find((q) => q.id === o!.userData.id); if (mo) return { kind: 'manual', o: mo, point: hit.point }; }
+      if (o.userData.kind === 'grenspunt' && store.data.inmeting.grens) return { kind: 'survey', s: { kind: 'grenspunt', punt: store.data.inmeting.grens.punten[o.userData.index], index: o.userData.index }, point: hit.point };
+      if (o.userData.kind === 'meetpunt' && store.data.inmeting.punten) return { kind: 'survey', s: { kind: 'meetpunt', punt: store.data.inmeting.punten.punten[o.userData.index], index: o.userData.index }, point: hit.point };
     }
-    return tp ? { kind: 'terrain', point: tp } : null;
+    if (!tp) return null;
+    // 2D-objecten op het maaiveld
+    const rd = frame.toRD(tp.x, tp.y, tp.z);
+    const tol = Math.max(0.3, 6 * mppAt(tp));
+    const sv = hitSurvey(store.data, L, rd.x, rd.y, tol);
+    if (sv && sv.kind !== 'grenslijn') return { kind: 'survey', s: sv, point: tp };
+    const mo = hitManual(store.data, L, rd.x, rd.y, tol);
+    if (mo) return { kind: 'manual', o: mo, point: tp };
+    if (sv) return { kind: 'survey', s: sv, point: tp };
+    const kh = hitKlic(store.data, L, rd.x, rd.y, tol);
+    if (kh) return { kind: 'klic', k: kh, point: tp };
+    return { kind: 'terrain', point: tp };
   };
 
   const tooltip = $('tooltip');
@@ -207,6 +313,12 @@ async function start() {
     pendingMove = null;
     if (ev.buttons) { tooltip.hidden = true; return; }
     const hit = pick(ev);
+    if (drawTool.active) {
+      tooltip.hidden = true;
+      const tp = hit?.point;
+      if (tp) { const rd = frame.toRD(tp.x, tp.y, tp.z); drawTool.move(rd.x, rd.y); stCoord.textContent = fmtRD(rd.x, rd.y); }
+      return;
+    }
     buildings?.setHover(hit?.kind === 'building' ? hit.b : null);
     trees?.setHover(hit?.kind === 'tree' ? hit.index : -1);
     if (hit) {
@@ -250,6 +362,23 @@ async function start() {
         <div>Bovenkant: ${fmtNAP(p.peil + z.top)} · ${fmtM(z.top)} boven peil</div>
         <div style="color:#bbb">Peil 0 P = ${fmtNAP(p.peil)}</div>`;
     }
+    if (hit.kind === 'manual') {
+      const o = hit.o;
+      const extra = o.soort === 'doorrijhoogte' ? ` · vrije hoogte ${fmtM(o.vrijeHoogte ?? null)}` : o.hoogte != null ? ` · hoogte ${fmtM(o.hoogte)}` : '';
+      return `<div class="t">${escapeHtml(o.naam || MANUAL_STYLE[o.soort].label)}</div><div>${MANUAL_STYLE[o.soort].label}${extra}</div>`;
+    }
+    if (hit.kind === 'survey') {
+      const sv = hit.s;
+      if (sv.kind === 'grenslijn') return `<div class="t" style="color:${GRENS_KLEUR}">Ingemeten perceelgrens</div><div style="color:#bbb">heeft voorrang op BRK</div>`;
+      const pt = sv.punt;
+      return `<div class="t">${sv.kind === 'grenspunt' ? 'Grenspunt' : 'Meetpunt'} ${escapeHtml(pt.nr)}${pt.code ? ` · ${escapeHtml(pt.code)}` : ''}</div><div>Z ${pt.z != null ? fmtNAP(pt.z, 3) : '–'}</div>`;
+    }
+    if (hit.kind === 'klic') {
+      const l = hit.k.line;
+      const st = themaStyle(l.thema);
+      const dia = l.props['Diameter'] ?? l.props['Bedrijfsspanning'] ?? l.props['Nominale spanning'] ?? '';
+      return `<div class="t"><span style="display:inline-block;width:18px;height:4px;background:${st.kleur};vertical-align:middle;margin-right:5px"></span>${escapeHtml(st.label)}</div><div>${escapeHtml(l.beheerder)} · ${l.status}${dia ? ` · ${escapeHtml(String(dia))}` : ''}</div><div style="color:#bbb">klik voor diepte en details</div>`;
+    }
     if (hit.kind === 'obstacle') {
       const o = hit.o;
       const hv = store.data.overschrijvingen.obstakels[o.id]?.hoogte;
@@ -269,13 +398,80 @@ async function start() {
     downAt = null;
     if (moved > 4) return;
     const hit = pick(ev);
+    if (drawTool.active) {
+      if (hit) { const rd = frame.toRD(hit.point.x, hit.point.y, hit.point.z); drawTool.click(rd.x, rd.y); }
+      return;
+    }
     if (!hit) return select(null);
+    if (hit.kind === 'manual') return select({ kind: 'manual', id: hit.o.id });
+    if (hit.kind === 'survey') {
+      if (hit.s.kind === 'grenslijn') return select({ kind: 'grens' });
+      return select({ kind: 'meetpunt', index: hit.s.index, grens: hit.s.kind === 'grenspunt' });
+    }
+    if (hit.kind === 'klic') { const rd = frame.toRD(hit.point.x, hit.point.y, hit.point.z); return select({ kind: 'klic', refId: hit.k.refId, lineId: hit.k.line.id, x: rd.x, y: rd.y }); }
     if (hit.kind === 'building') select({ kind: 'building', id: hit.b.rec.id });
     else if (hit.kind === 'tree') select({ kind: 'tree', index: hit.index });
     else if (hit.kind === 'obstacle') select({ kind: 'obstacle', id: hit.o.id });
     else if (hit.kind === 'design') select({ kind: 'design', zone: hit.zone });
     else { const rd = frame.toRD(hit.point.x, hit.point.y, hit.point.z); select({ kind: 'terrain', x: rd.x, y: rd.y }); }
   });
+
+  canvas.addEventListener('dblclick', (ev) => { if (drawTool.active) { ev.preventDefault(); drawTool.finish(); } });
+
+  // --- importeren en tekenen
+  const importCtx: ImportContext = {
+    store,
+    heightAt: (x, y) => terrain.heightAt(x, y),
+    brkLines: () => terrain.ownParcelRings,
+    center: { x: (m.kernpunten.reduce((a, q) => a + q.x, 0)) / m.kernpunten.length, y: (m.kernpunten.reduce((a, q) => a + q.y, 0)) / m.kernpunten.length },
+    ifcPlacement: () => designPlacement(),
+    status: (msg) => status(msg),
+  };
+  const fileImport = $('fileImport') as HTMLInputElement;
+  let importKind = '';
+  const menus = [['btnImport', 'menuImport'], ['btnDraw', 'menuDraw']] as const;
+  const closeMenus = () => { for (const [, mid] of menus) $(mid).hidden = true; };
+  for (const [bid, mid] of menus) $(bid).onclick = (e) => { e.stopPropagation(); const was = $(mid).hidden; closeMenus(); $(mid).hidden = !was; };
+  document.addEventListener('click', closeMenus);
+  for (const b of $('menuImport').querySelectorAll('button')) (b as HTMLButtonElement).onclick = () => {
+    importKind = (b as HTMLElement).dataset.imp!;
+    fileImport.accept = importKind === 'klic' ? '.zip,.xml' : importKind === 'dxf' ? '.dxf' : '.csv,.txt,.xyz,.asc';
+    fileImport.value = '';
+    fileImport.click();
+    closeMenus();
+  };
+  fileImport.addEventListener('change', async () => {
+    const f = fileImport.files?.[0];
+    if (!f) return;
+    if (importKind === 'grens') await importBoundary(f, importCtx);
+    else if (importKind === 'punten') await importPoints(f, importCtx);
+    else if (importKind === 'klic') await importKlic(f, importCtx);
+    else if (importKind === 'dxf') await importDxf(f, importCtx);
+  });
+  const DRAW: Record<string, { soort: ManualKind; geom: DrawGeom; naam: string; extra: Partial<ManualObject> }> = {
+    'doorrijhoogte-lijn': { soort: 'doorrijhoogte', geom: 'lijn', naam: 'Doorrijhoogte', extra: { vrijeHoogte: 4.0 } },
+    'doorrijhoogte-vlak': { soort: 'doorrijhoogte', geom: 'vlak', naam: 'Doorrijhoogte', extra: { vrijeHoogte: 4.0 } },
+    paaltjes: { soort: 'paaltjes', geom: 'punten', naam: 'Paaltjes', extra: { hoogte: 0.9 } },
+    hekwerk: { soort: 'hekwerk', geom: 'lijn', naam: 'Hekwerk', extra: { hoogte: 2.0 } },
+    nietBerijdbaar: { soort: 'nietBerijdbaar', geom: 'vlak', naam: 'Niet berijdbaar', extra: {} },
+  };
+  const startDraw = (key: string) => {
+    const d = DRAW[key];
+    select(null);
+    $('viewport').classList.add('drawing');
+    drawTool.start({
+      geom: d.geom, kleur: MANUAL_STYLE[d.soort].kleur, titel: `${MANUAL_STYLE[d.soort].label} tekenen`,
+      onFinish: (coords) => {
+        $('viewport').classList.remove('drawing');
+        const id = `m-${Date.now().toString(36)}`;
+        L.handmatig[d.soort] = true;
+        store.change(`${MANUAL_STYLE[d.soort].label} getekend`, (pd) => { pd.handmatig.push({ id, soort: d.soort, geom: d.geom, coords, naam: d.naam, ...d.extra }); });
+        select({ kind: 'manual', id });
+      },
+      onCancel: () => $('viewport').classList.remove('drawing'),
+    });
+  };
+  for (const b of $('menuDraw').querySelectorAll('button')) (b as HTMLButtonElement).onclick = () => { closeMenus(); startDraw((b as HTMLElement).dataset.draw!); };
 
   // --- camera
   const sporthalCenter = (): THREE.Vector3 => {
@@ -377,6 +573,11 @@ async function start() {
     if (ctrl && (key === 'y' || (key === 'z' && ev.shiftKey))) { ev.preventDefault(); store.redo(); return; }
     if (ctrl && key === 's') { ev.preventDefault(); saveProject(); return; }
     if (ctrl && key === 'o') { ev.preventDefault(); fileOpen.click(); return; }
+    if (drawTool.active) {
+      if (ev.key === 'Enter') { ev.preventDefault(); drawTool.finish(); return; }
+      if (ev.key === 'Escape') { ev.preventDefault(); drawTool.cancel(); return; }
+      if (ev.key === 'Backspace') { ev.preventDefault(); drawTool.undoPoint(); return; }
+    }
     if (ctrl || ev.altKey) return;
     if (ev.key === 'Escape') { if (modalOpen()) closeModal(); else select(null); return; }
     if (ev.key === 'F1' || ev.key === '?') { ev.preventDefault(); openModal(helpContent()); return; }
@@ -401,19 +602,20 @@ async function start() {
 }
 
 let statusTimer = 0;
-function status(msg: string) {
+/** Statusmelding; `ms` = 0 laat de melding staan. */
+function status(msg: string, ms = 6000) {
   const el = $('stMsg');
   el.textContent = msg;
   clearTimeout(statusTimer);
-  statusTimer = window.setTimeout(() => (el.textContent = ''), 6000);
+  if (ms) statusTimer = window.setTimeout(() => (el.textContent = ''), ms);
 }
 
-function renderWarnings(data: LoadedData) {
+function renderWarnings(data: LoadedData, b: ActiveBoundary) {
   const w = $('warnings');
   w.innerHTML = '';
-  const failed = data.manifest.bronnen.filter((b) => b.status !== 'ok');
-  for (const b of failed) w.append(h('div', { class: 'warnbox' }, `⚠ Bron niet beschikbaar: ${b.naam}. Draai "npm run data" opnieuw.`));
-  w.append(h('div', { class: 'warnbox' }, '⚠ Perceelgrenzen: indicatieve grens (BRK) – nog geen ingemeten grens geïmporteerd.'));
+  const failed = data.manifest.bronnen.filter((s) => s.status !== 'ok');
+  for (const s of failed) w.append(h('div', { class: 'warnbox' }, `⚠ Bron niet beschikbaar: ${s.naam}. Draai "npm run data" opnieuw.`));
+  if (b.bron !== 'ingemeten') w.append(h('div', { class: 'warnbox' }, `⚠ Indicatieve grens: ${b.omschrijving}. Nog geen ingemeten perceelgrens geïmporteerd.`));
 }
 
 start();
