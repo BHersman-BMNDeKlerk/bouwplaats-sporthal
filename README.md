@@ -94,6 +94,10 @@ Verplichte tests (`tests/sweptpath.test.ts`):
 2. opleggerstraal in stationaire bocht = √(R<sub>kingpin</sub>² − L<sub>t</sub>²), binnen ±0,10 m;
 3. draaicirkel van de fabrikant (stoep-stoep) en muur-muur gereproduceerd binnen ±0,10 m.
 
+**Automatisch plannen** (menu 🚚 Route → ⚡): start en eind (met richting) aanwijzen; een Hybrid A*-planner
+(`src/vehicles/planner.ts`, draait in een Web Worker) zoekt een botsingsvrije route met het voertuigmodel, inclusief
+begrensde stuursnelheid, steken en een instelbare vrije ruimte rondom. Trottoir en groen kosten extra. Tests: `tests/planner.test.ts`.
+
 > Indicatief hulpmiddel – geen vervanging van gecertificeerde software zoals AutoTURN of Vehicle Tracking.
 
 ## Fase 5: kraanopstellingen
@@ -118,6 +122,7 @@ Kranen zijn versleepbaar. Opgenomen uit een lastblad: **Liebherr MK 88 Plus** (m
 | Ongedaan / opnieuw | `Ctrl+Z` / `Ctrl+Y` |
 | Opslaan / openen | `Ctrl+S` / `Ctrl+O` (één projectbestand `.json`) |
 | 2D-bovenaanzicht (zonder perspectief) / 3D / sporthal | `T` / `P` / `Z` |
+| Hoogteverschillen maaiveld (NAP ↔ alles op één hoogte) | lagenpaneel → *Weergave* → schuif / knoppen (alleen weergave; berekeningen blijven in NAP) |
 | Plaatsing ontwerpmodel | klik op het nieuwe pand → paneel rechts |
 | Sporthal normaal → transparant → verborgen | `S` |
 | Handleiding / bronnen | `F1` / `B` |

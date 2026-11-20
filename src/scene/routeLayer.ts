@@ -103,6 +103,17 @@ export function routesOverlay(getRoutes: () => Route[], engine: RouteEngine, sel
         const last = res.sim.samples[res.sim.samples.length - 1];
         if (last) c.label('NIET UITVOERBAAR', last.x, last.y, 0, 1.0, '#ffffff', '#c62828', true);
       }
+      // start en eind van een automatisch geplande route
+      if (r.plan) {
+        const mark = (x: number, y: number, a: number | null, txt: string, col: string) => {
+          ctx.beginPath(); ctx.arc(c.X(x), c.Y(y), lw(0.9, 7), 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+          ctx.strokeStyle = '#fff'; ctx.lineWidth = lw(0.15, 2); ctx.stroke();
+          if (a != null) { ctx.beginPath(); ctx.moveTo(c.X(x), c.Y(y)); ctx.lineTo(c.X(x + 3 * Math.cos(a)), c.Y(y + 3 * Math.sin(a))); ctx.strokeStyle = col; ctx.lineWidth = lw(0.25, 2); ctx.stroke(); arrow(c, [x + 1.5 * Math.cos(a), y + 1.5 * Math.sin(a)], [x + 3.5 * Math.cos(a), y + 3.5 * Math.sin(a)], col, 0.8); }
+          c.label(txt, x, y, 0, 1.1, '#fff', col, true);
+        };
+        mark(r.plan.start[0], r.plan.start[1], r.plan.start[2], 'S', '#2e7d32');
+        mark(r.plan.eind[0], r.plan.eind[1], r.plan.eind[2], 'E', '#c62828');
+      }
       // naam bij het begin
       const p0 = r.legs[0].punten[0];
       c.label(r.naam, p0[0], p0[1] - 1.5, 0, 0.7, '#0d47a1', '#ffffffdd', true);

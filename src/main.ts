@@ -37,10 +37,12 @@ import { themaStyle } from './data/klic';
 import { RouteEngine, newRoute, type Route } from './vehicles/routes';
 import { VEHICLES } from './vehicles/vehicles';
 import { bboxOf, type RouteObstacle } from './vehicles/sweep';
+import { manualObstacles } from './vehicles/obstacles';
+import type { PlanInput, PlanResult } from './vehicles/planner';
 import type { Sample } from './vehicles/kinematics';
 import { RouteLayer, hitRoute, routesOverlay, ROUTE_KLEUR } from './scene/routeLayer';
 import { routePanel } from './ui/routePanel';
-import { gatePanels } from './core/polyline';
+import { HEIGHT } from './core/flatten';
 import { canLift, craneWarnings, newMK88, newMobileCrane, newTowerCrane, overlaps, type Crane, type CraneEnv, type CraneWarning, type LiftCheck } from './cranes/cranes';
 import { CraneLayer, cranesOverlay, hitCrane, type LiftMarker } from './scene/craneLayer';
 import { cranePanel } from './ui/cranePanel';
@@ -85,6 +87,7 @@ async function start() {
 
   // --- lagen
   const terrain = new TerrainLayer(data, frame);
+  HEIGHT.h0 = Math.round((terrain.heightAtNAP(m.origin.x, m.origin.y) ?? 0) * 100) / 100;
   viewer.scene.add(terrain.group);
   const buildings = data.buildings ? new BuildingsLayer(data.buildings.gebouwen, data.buildings.origin, frame, PROJECT.bagPandId) : null;
   if (buildings) viewer.scene.add(buildings.group);
@@ -170,7 +173,9 @@ async function start() {
   let overlayKey = '';
 
   // --- fase 4: routes (swept path)
-  const STOEP_KLASSEN = new Set(['voetpad', 'groen', 'struiken', 'bos', 'haag', 'verkeerseiland', 'water', 'oever']);
+  const BGT_HARD_LINES = new Set(['muur', 'hek', 'geluidsscherm']);
+  const BGT_HARD_POLYS = new Set(['water', 'haag', 'struiken', 'bos', 'scheiding']);
+  const STOEP_KLASSEN = new Set(['voetpad', 'groen', 'verkeerseiland', 'oever']);
   const circle = (x: number, y: number, r: number, n = 16) => [...Array(n + 1)].map((_, i) => [x + r * Math.cos((i / n) * 2 * Math.PI), y + r * Math.sin((i / n) * 2 * Math.PI)]);
   function routeObstacles(): RouteObstacle[] {
     const out: RouteObstacle[] = [];
@@ -197,17 +202,15 @@ async function start() {
       const r = Math.max(0.15, Math.max(o.spec.breedte, o.spec.diepte) / 2);
       add({ id: `o:${o.id}`, naam: o.spec.omschrijving, soort: 'paal', ring: [[o.x - r, o.y - r], [o.x + r, o.y - r], [o.x + r, o.y + r], [o.x - r, o.y + r], [o.x - r, o.y - r]] });
     }
-    for (const m of store.data.handmatig) {
-      const ring = m.coords.length >= 3 ? [...m.coords, m.coords[0]] : undefined;
-      if (m.soort === 'paaltjes') m.coords.forEach((c, i) => add({ id: `h:${m.id}:${i}`, naam: m.naam || 'paaltje', soort: 'paaltjes', ring: circle(c[0], c[1], 0.15, 8) }));
-      else if (m.soort === 'hekwerk') {
-        const ps = panels(m.coords), gates = gatePanels(m.poorten ?? [], ps.length);
-        ps.forEach((p) => { if (!gates.has(p.index)) add({ id: `h:${m.id}`, naam: m.naam || 'bouwhekken', soort: 'hekwerk', lijn: [p.a, p.b] }); });
-      } else if (m.soort === 'doorrijhoogte') {
-        const vh = m.vrijeHoogte ?? 4.0, naam = `${m.naam || 'doorrijhoogte'} (${vh.toFixed(2).replace('.', ',')} m)`;
-        if (m.geom === 'vlak' && ring) add({ id: `h:${m.id}`, naam, soort: 'doorrijhoogte', ring, vrijeHoogte: vh });
-        else add({ id: `h:${m.id}`, naam, soort: 'doorrijhoogte', lijn: m.coords, vrijeHoogte: vh });
-      } else if (m.soort === 'nietBerijdbaar' && ring) add({ id: `h:${m.id}`, naam: m.naam || 'niet berijdbaar', soort: 'niet berijdbaar', ring, alleenWielen: true });
+    out.push(...manualObstacles(store.data.handmatig));
+    // BGT: muren, hekken, hagen, struiken en water
+    for (const l of terrain.lines) {
+      if (!BGT_HARD_LINES.has(l.cls) || !L.bgt || !L.bgtKlassen[l.cls]) continue;
+      for (const c of l.lines) add({ id: `bgt:${l.id}`, naam: CLASS_STYLES[l.cls]?.label ?? l.cls, soort: 'muur', lijn: c });
+    }
+    for (const p of terrain.polys) {
+      if (!BGT_HARD_POLYS.has(p.cls) || !L.bgt || !L.bgtKlassen[p.cls]) continue;
+      for (const poly of p.polys) if (poly[0]) add({ id: `bgt:${p.id}`, naam: CLASS_STYLES[p.cls]?.label ?? p.cls, soort: p.cls === 'water' ? 'niet berijdbaar' : 'muur', ring: poly[0], alleenWielen: p.cls === 'water' || p.cls === 'struiken' });
     }
     // dubbele id's (hekdelen) samenvoegen tot één melding: uniek per deel maken maar naam gelijk
     const seen = new Map<string, number>();
@@ -269,13 +272,107 @@ async function start() {
       onCancel: () => { $('viewport').classList.remove('drawing'); measure.showSnap(null); },
     });
   }
+  // --- automatisch plannen (Hybrid A* in een Web Worker)
+  const SOFT_KOSTEN: Record<string, number> = { voetpad: 6, groen: 10, verkeerseiland: 10, oever: 10, fietspad: 1.5, parkeervak: 0.5 };
+  function runPlanner(inp: PlanInput): Promise<PlanResult> {
+    return new Promise((resolve) => {
+      const w = new Worker(new URL('./vehicles/planner.worker.ts', import.meta.url), { type: 'module' });
+      const done = (r: PlanResult) => { resolve(r); w.terminate(); };
+      w.onmessage = (e) => done(e.data);
+      w.onerror = (e) => done({ ok: false, reden: e.message || 'Fout in de planner', legs: [], poses: [], expansies: 0, lengte: 0, wissels: 0, restAfstand: Infinity });
+      w.postMessage(inp);
+    });
+  }
+  function planInput(v: Route['voertuig'], plan: NonNullable<Route['plan']>): PlanInput {
+    const [sx, sy, st] = plan.start, [ex, ey, eh] = plan.eind;
+    const pad = 45;
+    const bb = [Math.min(sx, ex) - pad, Math.min(sy, ey) - pad, Math.max(sx, ex) + pad, Math.max(sy, ey) + pad];
+    const inBB = (b: number[]) => !(b[2] < bb[0] || b[0] > bb[2] || b[3] < bb[1] || b[1] > bb[3]);
+    const soft: PlanInput['soft'] = [];
+    for (const p of terrain.polys) {
+      const c = SOFT_KOSTEN[p.cls];
+      if (!c || !inBB([p.bbox.xmin, p.bbox.ymin, p.bbox.xmax, p.bbox.ymax])) continue;
+      for (const poly of p.polys) if (poly[0]) soft.push({ ring: poly[0], cost: c });
+    }
+    return { v, start: { x: sx, y: sy, theta: st }, goal: { x: ex, y: ey, heading: eh }, obstacles: routeObstacles().filter((o) => inBB(o.bbox)), soft, marge: plan.marge, achteruit: plan.achteruit, kronenNegeren: plan.kronen === false, maxTijdMs: 15000 };
+  }
+  let planning = false;
+  if (import.meta.env.DEV) (window as any).__planInput = (v: any, plan: any) => planInput(v, plan);
+  async function planRoute(routeId: string | null, v: Route['voertuig'], plan: NonNullable<Route['plan']>) {
+    if (planning) return;
+    planning = true;
+    status(`Route zoeken voor ${v.naam}… (max. 15 s)`, 0);
+    $('viewport').style.cursor = 'progress';
+    const t0 = performance.now();
+    let res = await runPlanner(planInput(v, plan));
+    let snoei = false;
+    if (!res.ok && plan.kronen !== false && !/startpositie|eindpunt/.test(res.reden ?? '')) {
+      status(`Zonder clashes geen route – opnieuw met alleen boomstammen als obstakel…`, 0);
+      const r2 = await runPlanner(planInput(v, { ...plan, kronen: false }));
+      if (r2.ok) { res = r2; snoei = true; }
+    }
+    planning = false;
+    $('viewport').style.cursor = '';
+    const sec = ((performance.now() - t0) / 1000).toFixed(1).replace('.', ',');
+    if (!res.ok) {
+      status(`Geen route gevonden (${sec} s)`);
+      info.open('Geen route gevonden', v.naam,
+        h('div', { class: 'note warn', style: { marginLeft: 0, background: '#fdecea', color: '#b71c1c' } }, res.reden ?? 'Onbekende reden'),
+        h('div', { class: 'note', style: { marginLeft: 0 } }, 'Tips: kies een andere eindrichting (of laat die vrij door na het eindpunt op Enter te drukken), verklein de marge, sta achteruitrijden toe, of controleer of er een obstakel (hek zonder poort, paaltjes, geparkeerde auto’s) in de weg staat. Muren, hekken, hagen en water uit de BGT tellen mee zolang die lagen aan staan.'),
+        routeId ? h('div', { class: 'btnrow' }, h('button', { onclick: () => select({ kind: 'route', id: routeId }) }, 'Terug naar de route')) : null);
+      return;
+    }
+    const infoTxt = `Automatisch gepland in ${sec} s · ${res.wissels} wissel(s) van rijrichting · marge ${plan.marge.toFixed(2).replace('.', ',')} m` +
+      (snoei ? ' · ⚠ Zonder clashes niet mogelijk: deze route gaat onder boomkronen door die lager zijn dan het voertuig (snoeien nodig – zie botsingen).' : plan.kronen === false ? ' · boomkronen genegeerd (alleen stammen).' : '');
+    const p2 = { ...plan, info: infoTxt };
+    let id = routeId;
+    if (id && store.data.routes.some((q) => q.id === id)) {
+      store.change('Route opnieuw gepland', (d) => { const x = d.routes.find((q) => q.id === id); if (x) { x.legs = res.legs; x.pad = res.poses; x.plan = p2; } });
+    } else {
+      const r = newRoute(v.id, res.legs);
+      r.voertuig = { ...v };
+      r.naam = `${v.naam} (automatisch)`;
+      r.pad = res.poses; r.plan = p2;
+      id = r.id;
+      L.routes = true;
+      store.change('Route automatisch gepland', (d) => { d.routes.push(r); });
+    }
+    routePos = 0;
+    select({ kind: 'route', id: id! });
+    status(infoTxt);
+  }
+  function startAutoRoute(vehicleId: string) {
+    const v = VEHICLES.find((q) => q.id === vehicleId)!;
+    if (measure.active) stopMeasure();
+    select(null);
+    routePlaying = false;
+    $('viewport').classList.add('drawing');
+    const stap = ['klik het STARTPUNT (achteras)', 'klik de RIJRICHTING bij de start', 'klik het EINDPUNT (achteras' + (v.soort === 'oplegger' ? ' van de oplegger)' : ')'), 'klik de RICHTING bij het eind (of Enter = vrije eindrichting)'];
+    drawTool.start({
+      geom: 'lijn', kleur: '#2e7d32', titel: `${v.naam} – automatische route`, maxPunten: 4,
+      info: (pts) => stap[Math.min(3, Math.max(0, pts.length - 1))] ?? '',
+      onFinish: (c) => {
+        $('viewport').classList.remove('drawing');
+        measure.showSnap(null);
+        if (c.length < 2) return;
+        const ang = (a: number[], b: number[]) => Math.atan2(b[1] - a[1], b[0] - a[0]);
+        let start: [number, number, number], eind: [number, number, number | null];
+        if (c.length === 2) { start = [c[0][0], c[0][1], ang(c[0], c[1])]; eind = [c[1][0], c[1][1], null]; }
+        else if (c.length === 3) { start = [c[0][0], c[0][1], ang(c[0], c[1])]; eind = [c[2][0], c[2][1], null]; }
+        else { start = [c[0][0], c[0][1], ang(c[0], c[1])]; eind = [c[2][0], c[2][1], ang(c[2], c[3])]; }
+        void planRoute(null, { ...v }, { start, eind, marge: 0.25, achteruit: true });
+      },
+      onCancel: () => { $('viewport').classList.remove('drawing'); measure.showSnap(null); },
+    });
+  }
+
   function addRouteLeg(id: string, richting: 'vooruit' | 'achteruit') {
     const r = store.data.routes.find((q) => q.id === id);
     if (!r) return;
     const begin = routeEngine.nextStart(r, richting);
     const wat = richting === 'vooruit' ? 'de vooras' : r.voertuig.soort === 'oplegger' ? 'de as van de oplegger' : 'de achteras';
     drawRouteLeg(begin, richting, `Deel ${r.legs.length + 1} ${richting}: teken de lijn van ${wat}`, (pts) => {
-      store.change(`Routedeel ${richting} toegevoegd`, (d) => { const x = d.routes.find((q) => q.id === id); if (x) x.legs.push({ richting, punten: pts }); });
+      store.change(`Routedeel ${richting} toegevoegd`, (d) => { const x = d.routes.find((q) => q.id === id); if (x) { x.legs.push({ richting, punten: pts }); if (x.pad) { x.pad = undefined; x.plan = undefined; } } });
       const nr = store.data.routes.find((q) => q.id === id);
       if (nr) { routePos = routeEngine.result(nr).sim.lengte; showRoutePos(); refreshInfo(); }
     });
@@ -319,7 +416,7 @@ async function start() {
     for (const e of store.data.elementen) {
       if (!elVisible(e) || ELEMENTS[e.type]?.vlak) continue;
       const fp = footprint(e);
-      hoog.push({ id: e.id, naam: e.naam || ELEMENTS[e.type].label, soort: 'element', ring: [...fp, fp[0]], hoogteNAP: (terrain.heightAt(e.x, e.y) ?? 0) + totalHeight(e) });
+      hoog.push({ id: e.id, naam: e.naam || ELEMENTS[e.type].label, soort: 'element', ring: [...fp, fp[0]], hoogteNAP: (terrain.heightAtNAP(e.x, e.y) ?? 0) + totalHeight(e) });
     }
     for (const t0 of trees?.trees ?? []) {
       const t = effectiveTree(t0, store.data.overschrijvingen.bomen[t0.id]);
@@ -331,7 +428,7 @@ async function start() {
   function computeCraneChecks() {
     craneWarn = new Map();
     const vis = store.data.kranen.filter((k) => k.zichtbaar);
-    for (const k of vis) craneWarn.set(k.id, craneWarnings(k, { ...craneEnv(k), maaiveld: terrain.heightAt(k.x, k.y) ?? 0 }));
+    for (const k of vis) craneWarn.set(k.id, craneWarnings(k, { ...craneEnv(k), maaiveld: terrain.heightAtNAP(k.x, k.y) ?? 0 }));
     craneOverlap = overlaps(vis);
   }
   function startCranePlace(t: 'toren' | 'mobiel' | 'mk88') {
@@ -360,6 +457,7 @@ async function start() {
     computeConflicts();
     elementsLayer.apply(d.elementen, elVisible, L.botsingen ? conflictSet : new Set(), selectedElement);
     routeEngine.obstacleKey = JSON.stringify([d.handmatig, d.elementen, d.overschrijvingen.bomen, designPlacement(), L.elementLagen, L.bgtKlassen]);
+    if (HEIGHT.factor !== L.hoogteFactor) { HEIGHT.factor = L.hoogteFactor; terrain.applyHeightFactor(); }
     computeCraneChecks();
     craneLayer.apply(d.kranen, L.kranen, selectedCrane, liftMarker);
     const ok = JSON.stringify([d.kranen, selectedCrane, liftMarker, L.kranen, d.inmeting, d.klic, d.onderleggers, d.handmatig, selectedManual, d.elementen, [...conflictSet], selectedElement, L.elementLagen, L.botsingen, d.routes, selectedRoute, L.routes, L.routeSporen]);
@@ -381,7 +479,7 @@ async function start() {
     obstacles.apply(L3, ov.obstakels);
     const p = designPlacement();
     if (design && p) {
-      design.apply(p, L.ontwerp && !L.plattegrond, L.ontwerpTransparant);
+      design.apply(p, L.ontwerp && !L.plattegrond, L.ontwerpTransparant, terrain.heightAtNAP(p.x, p.y));
       const key = JSON.stringify(p);
       if (key !== contourKey) {
         contourKey = key;
@@ -418,7 +516,7 @@ async function start() {
   }
   const designMaaiveld = () => {
     const p = designPlacement();
-    return p ? terrain.heightAt(p.x, p.y) : null;
+    return p ? terrain.heightAtNAP(p.x, p.y) : null;
   };
   const renderPanel = () =>
     renderLayersPanel({
@@ -530,7 +628,7 @@ async function start() {
       if (line) info.showKlic(s.refId, line, s.x, s.y); else info.hide();
     } else if (s.kind === 'meetpunt') {
       const pt = s.grens ? store.data.inmeting.grens?.punten[s.index] : store.data.inmeting.punten?.punten[s.index];
-      if (pt) info.showMeetpunt(pt, s.grens, terrain.heightAt(pt.x, pt.y)); else info.hide();
+      if (pt) info.showMeetpunt(pt, s.grens, terrain.heightAtNAP(pt.x, pt.y)); else info.hide();
     } else if (s.kind === 'manual') {
       const o = store.data.handmatig.find((q) => q.id === s.id);
       if (o) info.showManual(o, () => { store.change(`${MANUAL_STYLE[o.soort].label} verwijderd`, (d) => { d.handmatig = d.handmatig.filter((q) => q.id !== o.id); }); select(null); });
@@ -588,7 +686,8 @@ async function start() {
       routePos = Math.min(routePos, res.sim.lengte);
       const p = routePanel(store, r, res, routePos, {
         addLeg: (richting) => addRouteLeg(r.id, richting),
-        removeLastLeg: () => store.change('Routedeel verwijderd', (d) => { const x = d.routes.find((q) => q.id === r.id); if (x) x.legs.pop(); }),
+        removeLastLeg: () => store.change('Routedeel verwijderd', (d) => { const x = d.routes.find((q) => q.id === r.id); if (x) { x.legs.pop(); x.pad = undefined; x.plan = undefined; } }),
+        replan: (marge, achteruit, kronen) => { const x = store.data.routes.find((q) => q.id === r.id); if (x?.plan) void planRoute(x.id, x.voertuig, { ...x.plan, marge, achteruit, kronen: kronen ?? x.plan.kronen }); },
         remove: () => { store.change('Route verwijderd', (d) => { d.routes = d.routes.filter((q) => q.id !== r.id); }); select(null); },
         setPos: (v) => { routePos = v; routePlaying = false; showRoutePos(); },
         togglePlay: () => { if (!routePlaying && routePos >= res.sim.lengte - 0.01) routePos = 0; routePlaying = !routePlaying; return routePlaying; },
@@ -605,7 +704,7 @@ async function start() {
     }
     else if (s.kind === 'terrain') {
       const bgt = terrain.bgtAt(s.x, s.y, L);
-      info.showTerrain(s.x, s.y, terrain.heightAt(s.x, s.y), terrain.measuredAt(s.x, s.y), bgt, L.percelen ? terrain.parcelAt(s.x, s.y) : null);
+      info.showTerrain(s.x, s.y, terrain.heightAtNAP(s.x, s.y), terrain.measuredAt(s.x, s.y), bgt, L.percelen ? terrain.parcelAt(s.x, s.y) : null);
     }
   }
 
@@ -714,7 +813,7 @@ async function start() {
     if (hit) {
       const rd = frame.toRD(hit.point.x, hit.point.y, hit.point.z);
       stCoord.textContent = fmtRD(rd.x, rd.y);
-      const mv = terrain.heightAt(rd.x, rd.y);
+      const mv = terrain.heightAtNAP(rd.x, rd.y);
       const meas = terrain.measuredAt(rd.x, rd.y);
       stHeight.textContent = `maaiveld ${fmtNAP(mv)}${meas === false ? ' (geïnterpoleerd)' : ''}`;
     }
@@ -908,7 +1007,7 @@ async function start() {
   // --- importeren en tekenen
   const importCtx: ImportContext = {
     store,
-    heightAt: (x, y) => terrain.heightAt(x, y),
+    heightAt: (x, y) => terrain.heightAtNAP(x, y),
     brkLines: () => terrain.ownParcelRings,
     center: { x: (m.kernpunten.reduce((a, q) => a + q.x, 0)) / m.kernpunten.length, y: (m.kernpunten.reduce((a, q) => a + q.y, 0)) / m.kernpunten.length },
     ifcPlacement: () => designPlacement(),
@@ -931,8 +1030,13 @@ async function start() {
   {
     const mr = $('menuRoute');
     mr.append(h('div', { class: 'mcat' }, 'Route tekenen voor'));
-    for (const v of VEHICLES) mr.append(h('button', { onclick: () => { closeMenus(); startRoute(v.id); } }, v.naam));
-    mr.append(h('div', { class: 'note', style: { margin: '6px 10px', maxWidth: '300px' } }, 'Teken de lijn van de vooras; daarna kun je in het paneel delen vooruit of achteruit toevoegen. Indicatief – geen vervanging van AutoTURN e.d.'));
+    mr.innerHTML = '';
+    mr.style.maxHeight = '75vh'; mr.style.overflowY = 'auto';
+    mr.append(h('div', { class: 'mcat' }, 'Automatisch: start en eind aanwijzen'));
+    for (const v of VEHICLES) mr.append(h('button', { onclick: () => { closeMenus(); startAutoRoute(v.id); } }, `⚡ ${v.naam}`));
+    mr.append(h('hr'), h('div', { class: 'mcat' }, 'Zelf tekenen (lijn van de vooras)'));
+    for (const v of VEHICLES) mr.append(h('button', { onclick: () => { closeMenus(); startRoute(v.id); } }, `✎ ${v.naam}`));
+    mr.append(h('div', { class: 'note', style: { margin: '6px 10px', maxWidth: '300px' } }, 'Automatisch: klik start, rijrichting, eind en eindrichting – de app zoekt een botsingsvrije route (met steken als dat nodig is). Indicatief – geen vervanging van AutoTURN e.d.'));
   }
   const closeMenus = () => { for (const [, mid] of menus) $(mid).hidden = true; };
   for (const [bid, mid] of menus) $(bid).onclick = (e) => { e.stopPropagation(); const was = $(mid).hidden; closeMenus(); $(mid).hidden = !was; };

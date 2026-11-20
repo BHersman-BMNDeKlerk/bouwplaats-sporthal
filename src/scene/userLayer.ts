@@ -1,3 +1,4 @@
+import { HEIGHT } from '../core/flatten';
 /** 3D-weergave van eigen invoer: handmatige obstakels en ingemeten punten/grens. */
 import * as THREE from 'three';
 import type { LocalFrame } from '../core/coords';
@@ -49,7 +50,7 @@ export class UserLayer {
   }
 
   apply(p: ProjectData, L: LayerState, selectedId: string | null) {
-    const key = JSON.stringify([p.handmatig, p.inmeting, L.handmatig, L.meetpunten, L.grens, selectedId]);
+    const key = JSON.stringify([p.handmatig, p.inmeting, L.handmatig, L.meetpunten, L.grens, selectedId, HEIGHT]);
     if (key === this.key) return;
     this.key = key;
     for (const c of [...this.group.children]) {

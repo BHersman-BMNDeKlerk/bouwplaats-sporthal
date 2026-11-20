@@ -89,7 +89,7 @@ export function envelope(v: VehicleSpec, samples: Sample[], res = 0.1): Envelope
 export interface RouteObstacle {
   id: string;
   naam: string;
-  soort: 'gebouw' | 'nieuw pand' | 'element' | 'boom' | 'paal' | 'paaltjes' | 'hekwerk' | 'doorrijhoogte' | 'niet berijdbaar';
+  soort: 'gebouw' | 'nieuw pand' | 'element' | 'boom' | 'paal' | 'paaltjes' | 'hekwerk' | 'doorrijhoogte' | 'niet berijdbaar' | 'muur';
   /** Polygoon (gesloten ring) of lijn (open). */
   ring?: number[][];
   lijn?: number[][];
@@ -116,6 +116,12 @@ export function bboxOf(p: number[][]): [number, number, number, number] {
   for (const q of p) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); }
   return [x0, y0, x1, y1];
 }
+const pointIn = (q: number[], r: number[][]) => {
+  let ins = false;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++)
+    if ((r[i][1] > q[1]) !== (r[j][1] > q[1]) && q[0] < ((r[j][0] - r[i][0]) * (q[1] - r[i][1])) / (r[j][1] - r[i][1]) + r[i][0]) ins = !ins;
+  return ins;
+};
 const hit = (a: number[], b: number[]) => a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1];
 const centroid = (p: number[][]): P2 => [p.reduce((s, q) => s + q[0], 0) / p.length, p.reduce((s, q) => s + q[1], 0) / p.length];
 
@@ -144,7 +150,7 @@ export function routeConflicts(
       const pbs = o.alleenWielen ? tbb : bbs;
       for (let i = 0; i < parts.length; i++) {
         if (!hit(pbs[i], o.bbox)) continue;
-        const touch = o.ring ? polygonsOverlap(parts[i], o.ring) : o.lijn ? polygonCrossesLine(parts[i], o.lijn) : false;
+        const touch = o.ring ? polygonsOverlap(parts[i], o.ring) : o.lijn ? polygonCrossesLine(parts[i], o.lijn) || o.lijn.some((q) => pointIn(q, parts[i])) : false;
         if (touch) {
           const [x, y] = centroid(parts[i]);
           out.set(o.id, { obstakelId: o.id, naam: o.naam, soort: o.soort, s: s.s, x, y, deel: o.alleenWielen ? 'wiel' : 'carrosserie' });

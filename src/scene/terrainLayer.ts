@@ -1,3 +1,4 @@
+import { HEIGHT, dispGround } from '../core/flatten';
 /**
  * Terrein: AHN-maaiveld als mesh (per tegel) met een samengestelde textuur:
  * luchtfoto en/of BGT-vlakken, reliëfschaduw, hoogtekleuren, lijnen,
@@ -485,7 +486,21 @@ export class TerrainLayer {
   // ---------------------------------------------------------------- bevragen
   /** Maaiveldhoogte (m NAP) op RD-positie. */
   heightAt(x: number, y: number): number | null {
+    const h = this.heightAtNAP(x, y);
+    return h == null ? null : dispGround(h);
+  }
+
+  /** Werkelijke maaiveldhoogte (m NAP), ongeacht de weergave-instelling. */
+  heightAtNAP(x: number, y: number): number | null {
     return this.data.terrain ? sampleGrid(this.data.terrain, x, y) : 0;
+  }
+
+  /** Pas de weergave van hoogteverschillen toe op de terreinmeshes. */
+  applyHeightFactor() {
+    for (const ch of this.chunks) {
+      ch.mesh.scale.y = HEIGHT.factor;
+      ch.mesh.position.y = HEIGHT.h0 * (1 - HEIGHT.factor);
+    }
   }
 
   /** Is het maaiveld hier gemeten (true) of geïnterpoleerd (false)? */

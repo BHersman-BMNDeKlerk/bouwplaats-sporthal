@@ -1,3 +1,4 @@
+import { HEIGHT, dispGround } from '../core/flatten';
 /** Bovengrondse obstakels uit BGT/IMGeo (plus): palen, masten, borden, kasten, straatmeubilair. */
 import * as THREE from 'three';
 import type { LocalFrame } from '../core/coords';
@@ -45,7 +46,7 @@ export class ObstaclesLayer {
     for (const o of this.items) {
       const ov = overrides[o.id];
       const h = typeof ov?.hoogte === 'number' ? ov.hoogte : o.spec.hoogte;
-      const key = `${h}|${!!ov?.hoogte}|${o === this.selected}`;
+      const key = `${h}|${!!ov?.hoogte}|${o === this.selected}|${HEIGHT.factor}|${HEIGHT.h0}`;
       o.obj.visible = !!L.obstakels[o.spec.categorie] && !ov?.verborgen;
       if (o.obj.userData.key === key) continue;
       o.obj.userData.key = key;
@@ -58,7 +59,7 @@ export class ObstaclesLayer {
       o.obj.remove(c);
       (c as THREE.Mesh).geometry?.dispose();
     }
-    const p = this.frame.toLocal(o.x, o.y, o.maaiveld);
+    const p = this.frame.toLocal(o.x, o.y, dispGround(o.maaiveld));
     o.obj.position.set(p.x, p.y, p.z);
     const color = o === this.selected ? '#ffeb3b' : overridden ? OVERRIDE_COLOR : o.spec.kleur;
     const mat = new THREE.MeshLambertMaterial({ color });

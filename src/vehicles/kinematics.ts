@@ -154,6 +154,51 @@ export interface SimOptions {
   ds?: number;
   /** Startpositie (anders afgeleid van het eerste routedeel). */
   start?: Pose;
+  /** Scherpe hoeken in de getekende lijn afronden met de kleinst rijdbare straal (standaard aan). */
+  afronden?: boolean;
+}
+
+/** Kleinste straal van het referentiepunt bij volle uitslag. */
+export function minRefRadius(v: VehicleSpec, richting: Richting): number {
+  const d = effectiveMaxSteer(v);
+  const Rr = v.wielbasis / Math.tan(d);
+  if (richting === 'vooruit') return Math.hypot(Rr, v.wielbasis);
+  if (v.soort !== 'oplegger') return Rr;
+  const Rk = Math.hypot(Rr, v.koppelpunt ?? 0), Lt = v.opleggerWielbasis ?? 0;
+  return Math.sqrt(Math.max(9, Rk * Rk - Lt * Lt));
+}
+
+/**
+ * Rond hoeken van een polylijn af met straal R (zoals een chauffeur een hoek
+ * neemt). Hoeken kleiner dan `minDefl` blijven staan; is er te weinig ruimte,
+ * dan wordt de straal zo groot als past (kleiner dan R → niet uitvoerbaar in de simulatie).
+ */
+export function filletPolyline(pts: [number, number][], R: number, minDefl = (12 * Math.PI) / 180): [number, number][] {
+  if (pts.length < 3) return pts.slice();
+  const out: [number, number][] = [pts[0]];
+  let prevCut = 0; // verbruikte lengte aan het begin van het huidige segment
+  for (let i = 1; i < pts.length - 1; i++) {
+    const a = pts[i - 1], b = pts[i], c = pts[i + 1];
+    const l1 = Math.hypot(b[0] - a[0], b[1] - a[1]), l2 = Math.hypot(c[0] - b[0], c[1] - b[1]);
+    if (l1 < 1e-6 || l2 < 1e-6) continue;
+    const h1 = Math.atan2(b[1] - a[1], b[0] - a[0]), h2 = Math.atan2(c[1] - b[1], c[0] - b[0]);
+    const defl = Math.atan2(Math.sin(h2 - h1), Math.cos(h2 - h1));
+    if (Math.abs(defl) < minDefl) { out.push(b); prevCut = 0; continue; }
+    const tanH = Math.tan(Math.abs(defl) / 2);
+    const t = Math.min(R * tanH, Math.max(0, l1 - prevCut) * 0.999, l2 / 2);
+    const r = t / tanH;
+    const p1: [number, number] = [b[0] - Math.cos(h1) * t, b[1] - Math.sin(h1) * t];
+    const sgn = Math.sign(defl);
+    const cx = p1[0] - sgn * Math.sin(h1) * r, cy = p1[1] + sgn * Math.cos(h1) * r;
+    const n = Math.max(2, Math.ceil(Math.abs(defl) / ((5 * Math.PI) / 180)));
+    for (let k = 0; k <= n; k++) {
+      const hk = h1 + (defl * k) / n;
+      out.push([cx + sgn * Math.sin(hk) * r, cy - sgn * Math.cos(hk) * r]);
+    }
+    prevCut = t;
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
 }
 
 /** Simuleer alle routedelen achter elkaar. */
@@ -179,8 +224,9 @@ export function simulate(v: VehicleSpec, legs: Leg[], opt: SimOptions = {}): Sim
     const back = leg.richting === 'achteruit';
     // begin van dit deel = huidige positie van het referentiepunt
     const ref0 = referencePoint(v, pose, leg.richting);
-    const pts = leg.punten.slice();
+    let pts = leg.punten.slice();
     if (Math.hypot(pts[0][0] - ref0[0], pts[0][1] - ref0[1]) > 0.05) pts.unshift(ref0);
+    if (opt.afronden !== false) pts = filletPolyline(pts, minRefRadius(v, leg.richting) * 1.05);
     const P = makePath(pts);
     if (P.pts.length < 2 || P.total < 0.1) return;
     const Ld = opt.lookahead ?? (v.soort === 'oplegger' && back ? Math.max(4, 0.8 * (v.opleggerWielbasis ?? 6)) : Math.max(3, 0.9 * v.wielbasis));
@@ -240,10 +286,25 @@ export function simulate(v: VehicleSpec, legs: Leg[], opt: SimOptions = {}): Sim
       if (rateRun > 1.0 && !rateFlagged) { rateFlagged = true; flagAt('stuursnelheid', 'Stuurt sneller dan mogelijk (stuursnelheid begrensd)'); }
       if (afw > MAX_AFWIJKING && !devFlagged) { devFlagged = true; flagAt('afwijking', `Wijkt meer dan ${MAX_AFWIJKING.toFixed(2).replace('.', ',')} m af van de getekende lijn`); }
       if (knik > knikMax) { flagAt('knikhoek', 'Maximale knikhoek overschreden (scharen)'); gestopt = true; break; }
-      if (afw > 6) { flagAt('afwijking', 'Route niet te volgen – simulatie gestopt'); gestopt = true; break; }
-      if (n === maxSteps - 1) { flagAt('onvoltooid', 'Einde van het routedeel niet bereikt'); gestopt = true; }
+      if (afw > 6) { flagAt('afwijking', 'Dit routedeel is niet te volgen – volgende deel begint waar het voertuig nu staat'); break; }
+      if (n === maxSteps - 1) flagAt('onvoltooid', 'Einde van het routedeel niet bereikt');
     }
   });
   const uitvoerbaar = !flags.some((f) => f.soort === 'afwijking' || f.soort === 'knikhoek' || f.soort === 'onvoltooid');
   return { samples, flags, uitvoerbaar, maxAfwijking: maxAfw, maxKnik, lengte: sTot };
+}
+
+/** Swept path direct uit een gepland traject (de planner rijdt al exact volgens het model). */
+export function samplesFromPoses(poses: { x: number; y: number; theta: number; phi: number; delta: number; dir: number }[]): SimResult {
+  const samples: Sample[] = [];
+  let s = 0, leg = 0, maxKnik = 0;
+  poses.forEach((p, i) => {
+    if (i > 0) {
+      s += Math.hypot(p.x - poses[i - 1].x, p.y - poses[i - 1].y);
+      if (p.dir !== poses[i - 1].dir) leg++;
+    }
+    maxKnik = Math.max(maxKnik, Math.abs(wrap(p.theta - p.phi)));
+    samples.push({ x: p.x, y: p.y, theta: p.theta, phi: p.phi, delta: p.delta, s, leg, afwijking: 0, stuurGrens: false, snelheidGrens: false });
+  });
+  return { samples, flags: [], uitvoerbaar: samples.length > 1, maxAfwijking: 0, maxKnik, lengte: s };
 }

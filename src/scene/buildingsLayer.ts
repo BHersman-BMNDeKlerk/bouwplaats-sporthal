@@ -1,3 +1,4 @@
+import { groundOffset } from '../core/flatten';
 /** Gebouwen uit de 3D BAG (LoD 2.2) met hoogte-overschrijvingen en kleuring. */
 import * as THREE from 'three';
 import type { LocalFrame, RDPoint } from '../core/coords';
@@ -97,6 +98,9 @@ export class BuildingsLayer {
       const ov = overrides[b.rec.id];
       this.applyGeometry(b, ov);
       const eff = effectiveHeights(b.rec, ov);
+      const dy = groundOffset(eff.maaiveld);
+      b.mesh.position.y = dy;
+      b.edges.position.y = dy;
       const anyOv = eff.overschreven.goot || eff.overschreven.nok || eff.overschreven.maaiveld;
       // kleur
       if (L.gebouwKleurHoogte) {

@@ -3,7 +3,8 @@
  * botsingen met een cache (alleen opnieuw rekenen als er iets verandert).
  */
 import { VEHICLES, type VehicleSpec } from './vehicles';
-import { simulate, referencePoint, type Leg, type SimResult } from './kinematics';
+import { simulate, referencePoint, samplesFromPoses, type Leg, type SimResult } from './kinematics';
+import type { PlanPose } from './planner';
 import { envelope, routeConflicts, type Envelope, type RouteConflict, type RouteObstacle } from './sweep';
 
 export interface Route {
@@ -15,6 +16,10 @@ export interface Route {
   zichtbaar: boolean;
   /** Spookbeelden om de zoveel meter (0 = uit). */
   spook: number;
+  /** Automatisch gepland: start/eind en instellingen. */
+  plan?: { start: [number, number, number]; eind: [number, number, number | null]; marge: number; achteruit: boolean; kronen?: boolean; info?: string };
+  /** Exact gepland traject (vervalt bij handmatige wijzigingen). */
+  pad?: PlanPose[];
 }
 
 export function newRoute(vehicleId: string, legs: Leg[] = []): Route {
@@ -39,10 +44,10 @@ export class RouteEngine {
   ) {}
 
   result(r: Route): RouteResult {
-    const key = JSON.stringify([r.voertuig, r.legs, this.obstacleKey]);
+    const key = JSON.stringify([r.voertuig, r.legs, r.pad?.length ?? 0, r.pad?.[r.pad.length - 1], this.obstacleKey]);
     const c = this.cache.get(r.id);
     if (c && c.key === key) return c.res;
-    const sim = simulate(r.voertuig, r.legs);
+    const sim = r.pad?.length ? samplesFromPoses(r.pad) : simulate(r.voertuig, r.legs);
     const env = envelope(r.voertuig, sim.samples, 0.1);
     const conflicts = routeConflicts(r.voertuig, sim.samples, this.obstacles(), this.stoepAt);
     const res = { sim, env, conflicts };
@@ -51,6 +56,7 @@ export class RouteEngine {
   }
 
   /** Huidige positie van het referentiepunt voor een nieuw routedeel. */
+  // (bij een gepland traject: het eind van dat traject)
   nextStart(r: Route, richting: Leg['richting']): [number, number] | null {
     const res = this.result(r);
     const last = res.sim.samples[res.sim.samples.length - 1];

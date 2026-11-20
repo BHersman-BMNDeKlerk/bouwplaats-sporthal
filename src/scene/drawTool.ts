@@ -18,6 +18,8 @@ export interface DrawRequest {
   snap?: (prev: [number, number], target: [number, number]) => [number, number];
   /** Optioneel: extra statustekst op basis van de punten. */
   info?: (pts: [number, number][]) => string;
+  /** Optioneel: automatisch afronden bij dit aantal punten. */
+  maxPunten?: number;
   /** Optioneel: vast beginpunt (bv. huidige positie van het voertuig). */
   begin?: [number, number];
 }
@@ -69,6 +71,7 @@ export class DrawTool {
     if (last && Math.hypot(last[0] - x, last[1] - y) < 0.05) return;
     this.pts.push([Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000]);
     this.update();
+    if (this.req.maxPunten && this.pts.length >= this.req.maxPunten) this.finish();
   }
 
   move(x: number, y: number, free = false) {

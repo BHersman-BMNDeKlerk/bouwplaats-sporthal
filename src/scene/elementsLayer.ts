@@ -1,3 +1,4 @@
+import { HEIGHT } from '../core/flatten';
 /** 3D-weergave van de bouwplaatselementen (fase 3). */
 import * as THREE from 'three';
 import type { LocalFrame } from '../core/coords';
@@ -16,7 +17,7 @@ export class ElementsLayer {
     const seen = new Set<string>();
     for (const e of els) {
       seen.add(e.id);
-      const key = JSON.stringify([e, conflicts.has(e.id), selectedId === e.id]);
+      const key = JSON.stringify([e, conflicts.has(e.id), selectedId === e.id, HEIGHT]);
       let o = this.objs.get(e.id);
       if (!o || o.key !== key) {
         if (o) this.dispose(o.g);

@@ -1,3 +1,4 @@
+import { groundOffset } from '../core/flatten';
 /**
  * Nieuw pand (uit het IFC-ontwerpmodel) als eenvoudige grijze blokken:
  * de buitenwerkse contour per hoogtezone, geëxtrudeerd tot het hoogste punt
@@ -41,9 +42,9 @@ export class DesignLayer {
     });
   }
 
-  apply(p: Placement, visible: boolean, transparent: boolean) {
+  apply(p: Placement, visible: boolean, transparent: boolean, maaiveldNAP: number | null = null) {
     this.group.visible = visible;
-    const L = this.frame.toLocal(p.x, p.y, p.peil);
+    const L = this.frame.toLocal(p.x, p.y, p.peil + groundOffset(maaiveldNAP));
     this.placed.position.set(L.x, L.y, L.z);
     this.placed.rotation.set(0, (p.rotatie * Math.PI) / 180, 0);
     this.placed.updateMatrixWorld(true);

@@ -87,6 +87,13 @@ export function helpContent(): Node {
   <p><b>Routes en vlakken</b> (menu Tekenen): looproute, vluchtroute (stippellijn met pijlen), vrij vlak en vrije lijn met label.</p>
   <h3>Draai- en steekbewegingen (menu 🚚 Route)</h3>
   <ul>
+    <li><b>⚡ Automatisch:</b> kies een voertuig en klik achtereenvolgens het startpunt (achteras), de rijrichting, het eindpunt
+      (achteras; bij een oplegger de as van de oplegger) en de eindrichting. Enter na het eindpunt = vrije eindrichting.
+      De app zoekt zelf een botsingsvrije route, met steken (achteruit) als dat nodig is, en vermijdt trottoir en groen waar het kan.
+      Lukt dat niet, dan probeert hij het met alleen boomstammen als obstakel en meldt hij welke kronen gesnoeid moeten worden.
+      Na wijzigingen op de bouwplaats: <i>Opnieuw plannen</i> in het paneel.</li>
+    <li>Scherpe hoeken in een zelf getekende lijn worden afgerond met de kleinst rijdbare straal (zoals een chauffeur de bocht neemt).</li>
+    <li>Bouwhekken zijn een obstakel, poorten niet. Ook muren, hekken, hagen en water uit de BGT tellen mee.</li>
     <li>Kies een voertuig en teken de lijn van de <b>vooras</b> (klik punten, dubbelklik of Enter = klaar). Een nieuw deel
       (<b>+ Vooruit</b> / <b>+ Achteruit</b>) begint waar het voertuig staat. Achteruit volgt de achteras, bij een oplegger de as van de oplegger.</li>
     <li>De app rekent met een kinematisch model (fietsmodel, oplegger met koppelpunt) met begrensde stuurhoek, stuursnelheid en knikhoek.

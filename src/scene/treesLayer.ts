@@ -1,3 +1,4 @@
+import { dispGround } from '../core/flatten';
 /** Bomen als eenvoudige 3D-bomen (stam + kroon), instanced. */
 import * as THREE from 'three';
 import type { LocalFrame } from '../core/coords';
@@ -58,7 +59,7 @@ export class TreesLayer {
     this.colors = [];
     this.trees.forEach((t0, i) => {
       const t = effectiveTree(t0, overrides[t0.id]);
-      const p = this.frame.toLocal(t.x, t.y, t.maaiveld);
+      const p = this.frame.toLocal(t.x, t.y, dispGround(t.maaiveld));
       if (t.verborgen) {
         m.makeScale(0, 0, 0);
         this.crowns.setMatrixAt(i, m);

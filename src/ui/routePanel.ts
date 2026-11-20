@@ -19,6 +19,7 @@ export interface RoutePanelActions {
   debug: boolean;
   setDebug: (on: boolean) => void;
   focus: (x: number, y: number) => void;
+  replan: (marge: number, achteruit: boolean, kronen?: boolean) => void;
 }
 
 type NumKey = Exclude<{ [K in keyof VehicleSpec]-?: NonNullable<VehicleSpec[K]> extends number ? K : never }[keyof VehicleSpec], undefined>;
@@ -64,7 +65,10 @@ export function routePanel(store: ProjectStore, r: Route, res: RouteResult, pos:
   const sel = h('select', {}, ...VEHICLES.map((q) => h('option', { value: q.id, selected: q.id === v.id }, q.naam)), v.id && !VEHICLES.some((q) => q.id === v.id) ? h('option', { value: v.id, selected: true }, v.naam) : null);
   sel.onchange = () => {
     const nv = VEHICLES.find((q) => q.id === sel.value);
-    if (nv) store.change('Voertuig gewijzigd', (d) => { const x = d.routes.find((q) => q.id === r.id); if (x) { x.voertuig = { ...nv }; if (x.naam === v.naam) x.naam = nv.naam; } });
+    if (nv) {
+      store.change('Voertuig gewijzigd', (d) => { const x = d.routes.find((q) => q.id === r.id); if (x) { x.voertuig = { ...nv }; if (x.naam.startsWith(v.naam)) x.naam = x.naam.replace(v.naam, nv.naam); if (x.plan) x.pad = undefined; } });
+      if (r.plan) act.replan(r.plan.marge, r.plan.achteruit);
+    }
   };
   const iNaam = h('input', { type: 'text', value: r.naam });
   const inputs = new Map<NumKey, HTMLInputElement>();
@@ -85,7 +89,8 @@ export function routePanel(store: ProjectStore, r: Route, res: RouteResult, pos:
       (nv as any)[k] = n;
     }
     if (nv.wielbasis <= 0.5 || nv.maxStuurhoek <= 1 || nv.maxStuurhoek >= 80) { msg.textContent = 'Wielbasis of stuurhoek buiten bereik.'; return; }
-    store.change('Voertuig aangepast', (d) => { const x = d.routes.find((q) => q.id === r.id); if (x) { x.voertuig = nv; x.naam = iNaam.value.trim() || x.naam; } });
+    store.change('Voertuig aangepast', (d) => { const x = d.routes.find((q) => q.id === r.id); if (x) { x.voertuig = nv; x.naam = iNaam.value.trim() || x.naam; if (x.plan) x.pad = undefined; } });
+    if (r.plan) act.replan(r.plan.marge, r.plan.achteruit);
   };
   const tc = turningCircles(v);
   const spec = h('div', { class: 'note', style: { marginLeft: 0 } },
@@ -119,8 +124,22 @@ export function routePanel(store: ProjectStore, r: Route, res: RouteResult, pos:
     readout.textContent = `${f(p, 1)} / ${f(total, 1)} m · deel ${s.leg + 1} · stuurhoek ${degS(s.delta)}${knik} · afwijking ${f(s.afwijking)} m${s.stuurGrens ? ' · max. uitslag' : ''}`;
   };
 
+  let planBox: Node | null = null;
+  if (r.plan) {
+    const iM = h('input', { type: 'text', value: String(r.plan.marge).replace('.', ','), style: { width: '70px' } }) as HTMLInputElement;
+    iM.addEventListener('keydown', (ev) => ev.stopPropagation());
+    const cA = h('input', { type: 'checkbox', checked: r.plan.achteruit }) as HTMLInputElement;
+    const cK = h('input', { type: 'checkbox', checked: r.plan.kronen !== false }) as HTMLInputElement;
+    planBox = h('fieldset', {}, h('legend', {}, '⚡ Automatisch gepland'),
+      h('div', { class: 'note', style: { marginLeft: 0 } }, r.plan.info ?? ''),
+      h('div', { class: 'frow' }, 'Vrije ruimte rondom (m)', iM),
+      h('label', { class: 'lrow' }, cA, 'Achteruitrijden (steken) toestaan'),
+      h('label', { class: 'lrow' }, cK, 'Lage boomkronen als obstakel (uit = alleen stammen, snoeien)'),
+      h('div', { class: 'btnrow' }, h('button', { class: 'primary', onclick: () => { const m = parseNum(iM.value); act.replan(m != null && !Number.isNaN(m) && m >= 0 ? m : r.plan!.marge, cA.checked, cK.checked); } }, '⚡ Opnieuw plannen')),
+      h('div', { class: 'note', style: { marginLeft: 0 } }, 'Start (S) en eind (E) staan op de kaart. Na het verplaatsen van elementen, hekken of kranen: opnieuw plannen. Zelf een deel toevoegen maakt er een getekende route van.'));
+  }
   const nodes = [
-    status, meldingen, botsingen,
+    status, meldingen, botsingen, planBox,
     h('fieldset', {}, h('legend', {}, 'Route'),
       legs,
       h('div', { class: 'btnrow' },

@@ -165,3 +165,54 @@ describe('Omhullende en botsingen', () => {
     expect(c.map((q) => q.obstakelId).sort()).toEqual(['b2', 'p']);
   });
 });
+
+import { fenceObstacles } from '../src/vehicles/obstacles';
+describe('Bouwhekken en poorten', () => {
+  const v = veh('bakwagen-10');
+  // hek dwars op de rijlijn (x = 20), van y = −10,5 tot y = +10,5 (6 hekken), poort = hekken 2–3 (y −3,5 … +3,5)
+  const hek = (poort: boolean) => ({ id: 'f', soort: 'hekwerk' as const, geom: 'lijn' as const, naam: 'hek', coords: [[20, -10.5], [20, 10.5]] as [number, number][], poorten: poort ? [{ id: 'p', start: 2, aantal: 2 }] : [] });
+  const rit = simulate(v, [{ richting: 'vooruit', punten: [[0, 0], [40, 0]] }]);
+  it('rijden door een bouwhek is een botsing', () => {
+    expect(routeConflicts(v, rit.samples, fenceObstacles(hek(false))).length).toBe(1);
+  });
+  it('rijden door een poort is geen botsing', () => {
+    const obs = fenceObstacles(hek(true));
+    expect(obs.length).toBe(2); // twee hekdelen naast de poort
+    expect(routeConflicts(v, rit.samples, obs).length).toBe(0);
+  });
+  it('een hek dat geheel onder de wagen valt telt ook', () => {
+    const kort = [{ id: 'k', naam: 'hekje', soort: 'hekwerk' as const, lijn: [[17, -0.5], [17, 0.5]], bbox: [17, -0.5, 17, 0.5] as [number, number, number, number] }];
+    const stil = [rit.samples[Math.floor(rit.samples.length / 2)]];
+    expect(routeConflicts(v, stil, kort).length).toBe(1);
+  });
+});
+
+import { filletPolyline } from '../src/vehicles/kinematics';
+describe('Getekende hoeken afronden', () => {
+  const v = veh('bakwagen-10');
+  const hoek: [number, number][] = [[0, 0], [30, 0], [30, 30]];
+  it('een haakse hoek in een ruime getekende lijn is rijdbaar (chauffeur neemt de bocht)', () => {
+    const r = simulate(v, [{ richting: 'vooruit', punten: hoek }]);
+    expect(r.uitvoerbaar).toBe(true);
+    expect(r.maxAfwijking).toBeLessThan(0.3);
+  });
+  it('zonder afronden wijkt het voertuig af', () => {
+    const r = simulate(v, [{ richting: 'vooruit', punten: hoek }], { afronden: false });
+    expect(r.maxAfwijking).toBeGreaterThan(0.5);
+  });
+  it('fillet raakt beide lijnstukken en heeft de gevraagde straal', () => {
+    const f = filletPolyline(hoek, 10);
+    const mid = f[Math.floor(f.length / 2)];
+    // middelpunt van de boog op (20, 10): afstand = straal
+    expect(Math.hypot(mid[0] - 20, mid[1] - 10)).toBeCloseTo(10, 6);
+    expect(f[1][1]).toBeCloseTo(0, 6);
+    expect(f[f.length - 2][0]).toBeCloseTo(30, 6);
+  });
+  it('een volgend deel werkt ook als een eerder deel niet te volgen was', () => {
+    const r = simulate(veh('trekker-oplegger'), [
+      { richting: 'vooruit', punten: [[0, 0], [20, 0], [20.5, 0.5], [20, 1], [0, 1]] },
+      { richting: 'vooruit', punten: [[50, 50], [80, 50]] },
+    ]);
+    expect(r.samples.some((s) => s.leg === 1)).toBe(true);
+  });
+});

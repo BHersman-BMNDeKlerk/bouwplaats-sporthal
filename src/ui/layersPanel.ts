@@ -88,6 +88,16 @@ export function renderLayersPanel(o: LayersPanelOpts) {
     segP.append(h('button', { class: L.plattegrond === v ? 'on' : '', onclick: () => { L.plattegrond = v; o.onPlattegrond?.(v); changed('all')(); } }, label));
   root.append(segP);
   if (L.plattegrond) root.append(h('div', { class: 'note', style: { marginLeft: 0 } }, 'Plattegrond op basis van de kadasterkaart: perceelgrenzen met perceelnummers, gebouwomtrekken, straatnamen en huisnummers (sneltoets K). Eigen invoer, KLIC en het nieuwe pand blijven zichtbaar.'));
+  {
+    const lbl = h('span', { style: { minWidth: '38px', textAlign: 'right' } }, `${Math.round(L.hoogteFactor * 100)}%`);
+    const r = h('input', { type: 'range', min: '0', max: '100', step: '5', value: String(Math.round(L.hoogteFactor * 100)) }) as HTMLInputElement;
+    r.oninput = () => { lbl.textContent = `${r.value}%`; };
+    r.onchange = () => { L.hoogteFactor = Number(r.value) / 100; changed('all')(); };
+    root.append(h('div', { class: 'slider', style: { paddingLeft: 0 }, title: '100% = werkelijke hoogtes (NAP); 0% = alles op één vlak maaiveld. Berekeningen blijven in NAP.' }, 'Hoogteverschil maaiveld', r, lbl));
+    root.append(h('div', { class: 'seg', style: { marginLeft: 0 } },
+      h('button', { class: L.hoogteFactor === 1 ? 'on' : '', onclick: () => { L.hoogteFactor = 1; changed('all')(); } }, 'Werkelijk (NAP)'),
+      h('button', { class: L.hoogteFactor === 0 ? 'on' : '', onclick: () => { L.hoogteFactor = 0; changed('all')(); } }, 'Alles op één hoogte')));
+  }
 
   // --- Ondergrond
   root.append(h('h2', {}, 'Ondergrond'));
