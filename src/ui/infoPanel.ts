@@ -100,6 +100,11 @@ export class InfoPanel {
     this.open(
       titel,
       `BAG ${r.bagId} · bouwjaar ${r.bouwjaar ?? '?'} · ${r.status ?? ''}`,
+      r.bron === 'bgt-ahn'
+        ? h('div', { class: 'note warn', style: { marginLeft: 0 } }, 'Niet in de 3D BAG (vaak nieuwbouw). Getoond als blok: BGT-footprint met dakhoogte uit het AHN (90e percentiel). Goot = nok = indicatieve dakhoogte.')
+        : r.bron === 'bgt-aanname'
+          ? h('div', { class: 'note warn', style: { marginLeft: 0 } }, 'Niet in de 3D BAG en geen gebouw zichtbaar in het AHN (waarschijnlijk gebouwd na de inwinning). Getoond als blok met een AANGENOMEN hoogte van 3 m – vul de werkelijke hoogte hieronder in.')
+          : null,
       any ? h('div', { class: 'kv' }, h('span', { class: 'badge ov' }, '✎ handmatig overschreven'), ov?.opmerking ? h('span', { style: { fontSize: '12px', marginLeft: '6px' } }, ov.opmerking) : null) : null,
       table,
       levels,

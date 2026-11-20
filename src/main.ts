@@ -236,7 +236,7 @@ async function start() {
         <div${cls(e.overschreven.goot)}>Goot: ${fmtNAP(e.goot)} · ${fmtM(relative(e.goot, e.maaiveld))} t.o.v. mv</div>
         <div${cls(e.overschreven.nok)}>Nok: ${fmtNAP(e.nok)} · ${fmtM(relative(e.nok, e.maaiveld))} t.o.v. mv</div>
         <div${cls(e.overschreven.maaiveld)}>Maaiveld: ${fmtNAP(e.maaiveld)}</div>
-        <div style="color:#bbb">Peildatum: ${(r.pwBron ?? '?').toUpperCase()} ${r.pwDatum ?? ''} · bouwjaar ${r.bouwjaar ?? '?'}</div>
+        ${r.bron === 'bgt-aanname' ? '<div class="ov">Niet in 3D BAG – hoogte is een aanname</div>' : r.bron === 'bgt-ahn' ? '<div style="color:#bbb">Niet in 3D BAG – blok uit BGT + AHN</div>' : ''}<div style="color:#bbb">Peildatum: ${(r.pwBron ?? '?').toUpperCase()} ${r.pwDatum ?? ''} · bouwjaar ${r.bouwjaar ?? '?'}</div>
         ${e.overschreven.goot || e.overschreven.nok || e.overschreven.maaiveld ? '<div class="ov">✎ handmatig overschreven</div>' : ''}`;
     }
     if (hit.kind === 'tree' && trees) {
@@ -291,7 +291,7 @@ async function start() {
   };
   const zoomSporthal = () => {
     const c = sporthalCenter();
-    viewer.flyTo(c.clone().add(new THREE.Vector3(-55, 70, 75)), c);
+    viewer.focus(c, 45);
   };
   {
     const c = sporthalCenter();
@@ -340,8 +340,27 @@ async function start() {
   $('btnOpen').onclick = () => fileOpen.click();
   btnUndo.onclick = () => store.undo();
   btnRedo.onclick = () => store.redo();
-  $('btnTop').onclick = () => viewer.topView();
-  $('btnOblique').onclick = () => viewer.obliqueView();
+  $('btnTop').onclick = () => viewer.to2D();
+  $('btnOblique').onclick = () => viewer.to3D();
+  const scalebar = $('scalebar');
+  const syncMode = (mode: string) => {
+    $('btnTop').classList.toggle('active', mode === '2d');
+    $('btnOblique').classList.toggle('active', mode === '3d');
+    scalebar.hidden = mode !== '2d';
+    status(mode === '2d' ? '2D-bovenaanzicht: orthografisch, zonder perspectief' : '3D-aanzicht');
+  };
+  viewer.onModeChange(syncMode);
+  syncMode(viewer.mode);
+  viewer.onFrame(() => {
+    if (viewer.mode !== '2d') return;
+    const mpp = viewer.metersPerPixel();
+    const target = mpp * 120;
+    const p10 = 10 ** Math.floor(Math.log10(target));
+    const nice = [1, 2, 5, 10].map((k) => k * p10).filter((v) => v <= target).pop() ?? p10;
+    const px = nice / mpp;
+    (scalebar.querySelector('.bar') as HTMLElement).style.width = `${px}px`;
+    scalebar.querySelector('.lbl')!.textContent = `${nice.toLocaleString('nl-NL')} m  ·  scherm ≈ 1:${Math.round(mpp / 0.0002646).toLocaleString('nl-NL')}`;
+  });
   $('btnSporthal').onclick = zoomSporthal;
   $('btnHelp').onclick = () => openModal(helpContent());
   $('btnSources').onclick = () => openModal(sourcesContent(m));
@@ -362,8 +381,8 @@ async function start() {
     if (ev.key === 'Escape') { if (modalOpen()) closeModal(); else select(null); return; }
     if (ev.key === 'F1' || ev.key === '?') { ev.preventDefault(); openModal(helpContent()); return; }
     if (modalOpen()) return;
-    if (key === 't') viewer.topView();
-    else if (key === 'p') viewer.obliqueView();
+    if (key === 't') viewer.to2D();
+    else if (key === 'p') viewer.to3D();
     else if (key === 'z') zoomSporthal();
     else if (key === 'n') viewer.northUp();
     else if (key === 'b') openModal(sourcesContent(m));

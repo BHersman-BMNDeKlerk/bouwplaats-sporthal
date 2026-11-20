@@ -15,8 +15,9 @@ import { pagesToBuildings, type CJPage } from '../src/data/cityjson';
 import { polygonsOf } from '../src/data/geom';
 import { fillGaps, gridRange, type Grid } from '../src/data/terrain';
 import { deriveTrees } from '../src/data/trees';
+import { lod1Block, LOD1_DEFAULT_HEIGHT } from '../src/data/lod1';
 import type {
-  BgtCollectionFile, BgtFeature, BuildingsFile, Manifest, OrthoIndex, SourceInfo, TerrainHeader, TreesFile,
+  BgtCollectionFile, BgtFeature, BuildingRecord, BuildingsFile, Manifest, OrthoIndex, SourceInfo, TerrainHeader, TreesFile,
 } from '../src/data/types';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -134,22 +135,20 @@ if (hasRaw('ahn/header.json') && hasRaw('ahn/dtm.f32')) {
 
 // --- Gebouwen ----------------------------------------------------------------
 let footprints: number[][][][] = [];
+let gebouwen: BuildingRecord[] = [];
+let pwTxt = '';
 if (hasRaw('3dbag')) {
   console.log('\n▶ gebouwen (3D BAG)');
   const files = fs.readdirSync(path.join(RAW, '3dbag')).filter((f) => f.endsWith('.json')).sort();
   const pages = files.map((f) => readJSON(`3dbag/${f}`) as CJPage);
-  const gebouwen = pagesToBuildings(pages, origin);
+  gebouwen = pagesToBuildings(pages, origin);
   footprints = gebouwen.map((g) => g.footprint).filter((f) => f.length);
   const sporthal = gebouwen.find((g) => g.bagId === PROJECT.bagPandId);
   console.log(`  ${gebouwen.length} gebouwen; sporthal ${sporthal ? `gevonden (goot ${sporthal.goot}, nok ${sporthal.nok} m NAP)` : 'NIET gevonden'}`);
   const pw = new Map<string, number>();
   for (const g of gebouwen) pw.set(`${g.pwBron ?? '?'} ${g.pwDatum ?? ''}`.trim(), (pw.get(`${g.pwBron ?? '?'} ${g.pwDatum ?? ''}`.trim()) ?? 0) + 1);
-  const pwTxt = [...pw.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k}: ${n}`).join(', ');
-  const file: BuildingsFile = { origin, versie3dbag: log.bronnen['3dbag']?.versie ?? '', gebouwen };
-  write('gebouwen.json', file);
-  bestanden.gebouwen = 'gebouwen.json';
-  addSource('3dbag', { aantal: gebouwen.length, peildatum: `per gebouw; puntenwolken: ${pwTxt}` });
-} else addSource('3dbag');
+  pwTxt = [...pw.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k}: ${n}`).join(', ');
+}
 
 // --- BGT ------------------------------------------------------------------------
 const bgtCurrent: Record<string, BgtFeature[]> = {};
@@ -181,6 +180,35 @@ function roundGeom(g: any): any {
   const rc = (c: any): any => (typeof c[0] === 'number' ? c.map((v: number) => Math.round(v * 1000) / 1000) : c.map(rc));
   return { type: g.type, coordinates: rc(g.coordinates) };
 }
+
+// --- Gebouwen: aanvullen met panden die niet in de 3D BAG staan, en wegschrijven ---------
+if (gebouwen.length) {
+  const in3d = new Set(gebouwen.map((g) => g.bagId));
+  let nAhn = 0, nAanname = 0;
+  if (dtm) {
+    const jaar = String(log.bronnen['ahn']?.peildatum ?? '');
+    for (const f of bgtCurrent['pand'] ?? []) {
+      const bag = String(f.properties.bag_pnd ?? '');
+      if (!bag || in3d.has(bag)) continue;
+      const r = lod1Block(bag, polygonsOf(f.geometry), dtm, dsm, origin, { bron: ahnLabel.split(' ')[0].toLowerCase(), jaar });
+      if (!r) continue;
+      gebouwen.push(r.rec);
+      in3d.add(bag);
+      if (r.aanname) nAanname++; else nAhn++;
+    }
+    console.log(`\n▶ gebouwen aangevuld (niet in 3D BAG): ${nAhn} blok(ken) met AHN-hoogte, ${nAanname} met aangenomen hoogte`);
+  }
+  const file: BuildingsFile = { origin, versie3dbag: log.bronnen['3dbag']?.versie ?? '', gebouwen };
+  write('gebouwen.json', file);
+  bestanden.gebouwen = 'gebouwen.json';
+  addSource('3dbag', {
+    aantal: gebouwen.length,
+    peildatum: `per gebouw; puntenwolken: ${pwTxt}`,
+    opmerkingen: nAhn + nAanname
+      ? [`${nAhn + nAanname} panden staan wel in BGT/BAG maar niet in de 3D BAG (meestal nieuwbouw). Die zijn aangevuld als blok (LoD 1): BGT-footprint met dakhoogte uit ${ahnLabel}${nAanname ? `; ${nAanname} zonder AHN-signaal (gebouwd na de inwinning) met aangenomen hoogte ${LOD1_DEFAULT_HEIGHT} m` : ''}.`]
+      : [],
+  });
+} else addSource('3dbag');
 
 // --- BRK --------------------------------------------------------------------------
 if (hasRaw('brk/perceel.json')) {

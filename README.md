@@ -73,7 +73,7 @@ npm run preview
 | Hoogte overschrijven | klik gebouw → paneel rechts → waarden in m NAP → *Toepassen* |
 | Ongedaan / opnieuw | `Ctrl+Z` / `Ctrl+Y` |
 | Opslaan / openen | `Ctrl+S` / `Ctrl+O` (één projectbestand `.json`) |
-| Bovenaanzicht / 3D / sporthal | `T` / `P` / `Z` |
+| 2D-bovenaanzicht (zonder perspectief) / 3D / sporthal | `T` / `P` / `Z` |
 | Plaatsing ontwerpmodel | klik op het nieuwe pand → paneel rechts |
 | Sporthal normaal → transparant → verborgen | `S` |
 | Handleiding / bronnen | `F1` / `B` |

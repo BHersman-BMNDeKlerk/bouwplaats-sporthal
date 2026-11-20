@@ -18,6 +18,7 @@ export interface LayerState {
   bomen: boolean;
   obstakels: Record<string, boolean>;
   projectgebied: boolean;
+  lagenVersie: number;
   ontwerp: boolean;
   ontwerpContour: boolean;
   ontwerpTransparant: boolean;
@@ -43,6 +44,7 @@ export function defaultLayers(): LayerState {
     bomen: true,
     obstakels: Object.fromEntries(OBSTACLE_CATEGORIES.map((c) => [c, true])),
     projectgebied: true,
+    lagenVersie: 2,
     ontwerp: true,
     ontwerpContour: true,
     ontwerpTransparant: false,
@@ -54,6 +56,8 @@ export function mergeLayers(saved: any): LayerState {
   const d = defaultLayers();
   if (!saved || typeof saved !== 'object') return d;
   const out: any = { ...d };
+  // versie 1 had de gebouwcontouren standaard uit; die nieuwe standaard niet overschrijven
+  if (!saved.lagenVersie && saved.bgtKlassen) { saved = { ...saved, bgtKlassen: { ...saved.bgtKlassen } }; delete saved.bgtKlassen.pand_bgt; }
   for (const k of Object.keys(d) as (keyof LayerState)[]) {
     const v = saved[k];
     if (v == null) continue;

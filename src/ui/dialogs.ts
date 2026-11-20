@@ -35,6 +35,11 @@ export function helpContent(): Node {
     <tr><td>Scrollwiel</td><td>In- en uitzoomen (naar de muis toe)</td></tr>
     <tr><td>Kompas rechtsboven</td><td>Noord weer boven zetten</td></tr>
   </table>
+  <h3>2D en 3D</h3>
+  <p><b>2D</b> (<kbd>T</kbd>) toont de kaart recht van boven zonder perspectief: daken liggen precies boven hun footprint
+  en een schaalbalk geeft de maat. In <b>3D</b> (<kbd>P</kbd>) hellen hoge gebouwen door het perspectief weg van het
+  beeldmidden; vergelijk daar dus geen randen met de luchtfoto. Ook de luchtfoto zelf is geen true-ortho: daken van
+  hoge panden liggen op de foto 1–3 m verschoven. De gele lijnen (laag <i>Contouren op maaiveld</i>) tonen de echte footprints.</p>
   <h3>Informatie opvragen</h3>
   <ul>
     <li><b>Muis over een gebouw</b>: goot- en nokhoogte in m NAP en t.o.v. maaiveld, met de peildatum van de bron.</li>
@@ -57,8 +62,8 @@ export function helpContent(): Node {
   Gebruik <i>Opslaan</i> en <i>Openen</i>. De browser onthoudt de laatste stand ook automatisch.</p>
   <h3>Sneltoetsen</h3>
   <table>
-    <tr><td>${k('Ctrl')} + ${k('Z')}</td><td>Ongedaan maken</td><td>${k('T')}</td><td>Bovenaanzicht (noord boven)</td></tr>
-    <tr><td>${k('Ctrl')} + ${k('Y')}</td><td>Opnieuw</td><td>${k('P')}</td><td>Schuin 3D-aanzicht</td></tr>
+    <tr><td>${k('Ctrl')} + ${k('Z')}</td><td>Ongedaan maken</td><td>${k('T')}</td><td>2D-bovenaanzicht (orthografisch, noord boven, met schaalbalk)</td></tr>
+    <tr><td>${k('Ctrl')} + ${k('Y')}</td><td>Opnieuw</td><td>${k('P')}</td><td>3D-aanzicht</td></tr>
     <tr><td>${k('Ctrl')} + ${k('S')}</td><td>Project opslaan</td><td>${k('Z')}</td><td>Zoom naar de sporthal</td></tr>
     <tr><td>${k('Ctrl')} + ${k('O')}</td><td>Project openen</td><td>${k('N')}</td><td>Noord boven</td></tr>
     <tr><td>${k('Esc')}</td><td>Selectie / venster sluiten</td><td>${k('S')}</td><td>Sporthal: normaal → transparant → verborgen</td></tr>

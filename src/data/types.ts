@@ -109,6 +109,8 @@ export interface BuildingRecord {
   /** Mesh: vertices lokaal t.o.v. manifest.origin: [dx, dy, z] per vertex (m). */
   mesh: { v: number[]; roof: number[]; wall: number[] };
   lod: string;
+  /** Herkomst: 3D BAG (standaard), of een blok uit BGT-footprint + AHN-hoogte / aangenomen hoogte. */
+  bron?: '3dbag' | 'bgt-ahn' | 'bgt-aanname';
 }
 
 export interface BuildingsFile {

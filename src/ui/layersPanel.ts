@@ -71,7 +71,7 @@ export function renderLayersPanel(o: LayersPanelOpts) {
       h('input', { type: 'range', min: 0, max: 1, step: 0.05, value: String(L.bgtDekking), oninput: (e: Event) => { L.bgtDekking = Number((e.target as HTMLInputElement).value); changed('terrain')(); } })));
   const groups = new Map<string, string[]>();
   for (const [k, s] of Object.entries(CLASS_STYLES)) {
-    if (!o.presentClasses.has(k)) continue;
+    if (!o.presentClasses.has(k) || k === 'pand_bgt') continue;
     if (!groups.has(s.groep)) groups.set(s.groep, []);
     groups.get(s.groep)!.push(k);
   }
@@ -89,6 +89,8 @@ export function renderLayersPanel(o: LayersPanelOpts) {
   // --- Gebouwen
   root.append(h('h2', {}, 'Gebouwen (3D BAG)'));
   root.append(check('Gebouwen in 3D', () => L.gebouwen, (v) => (L.gebouwen = v), 'scene', { disabled: !data.buildings }));
+  root.append(check('Contouren op maaiveld (BGT/BAG)', () => L.bgtKlassen.pand_bgt, (v) => (L.bgtKlassen.pand_bgt = v), 'terrain', { sub: true, swatch: swatch(undefined, '#ffd600') }));
+  root.append(h('div', { class: 'note' }, 'De luchtfoto is geen true-ortho: daken van hoge panden staan op de foto 1–3 m verschoven t.o.v. de gele contour. Gebruik 2D (T) om modellen zonder perspectief te bekijken.'));
   root.append(check('Inkleuren op hoogte', () => L.gebouwKleurHoogte, (v) => (L.gebouwKleurHoogte = v), 'all', { sub: true }));
   if (L.gebouwKleurHoogte) root.append(...ramp(HEIGHT_STOPS, 0, 30), h('div', { class: 'note' }, 'Nokhoogte t.o.v. maaiveld (m)'));
   root.append(h('div', { class: 'note' }, 'Sporthal:'));

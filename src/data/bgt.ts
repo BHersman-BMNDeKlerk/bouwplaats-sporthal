@@ -53,7 +53,7 @@ export const CLASS_STYLES: Record<string, ClassStyle> = {
   kunstwerk: { label: 'Kunstwerk / brug', fill: '#a0a0a0', stroke: '#555555', width: 0.15, order: 40, groep: 'Overig', standaardAan: true },
   weginrichting: { label: 'Weginrichting (vlak)', fill: '#c0b8a8', order: 30, groep: 'Overig', standaardAan: true },
   scheiding: { label: 'Scheiding (vlak)', fill: '#5a5a5a', order: 41, groep: 'Overig', standaardAan: true },
-  pand_bgt: { label: 'Pand (BGT-omtrek)', stroke: '#6b4f3a', width: 0.12, order: 45, groep: 'Overig', standaardAan: false },
+  pand_bgt: { label: 'Gebouwcontouren op maaiveld (BGT/BAG)', stroke: '#ffd600', width: 0.15, order: 45, groep: 'Overig', standaardAan: true },
   // lijnen
   muur: { label: 'Muur', stroke: '#3a3a3a', width: 0.3, order: 50, groep: 'Lijnen', standaardAan: true },
   hek: { label: 'Hek', stroke: '#2b2b2b', width: 0.12, dash: [0.6, 0.3], order: 50, groep: 'Lijnen', standaardAan: true },

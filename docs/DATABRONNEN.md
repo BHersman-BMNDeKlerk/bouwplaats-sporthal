@@ -39,6 +39,11 @@ RD x 105440–105770, y 424510–424850 (330 × 340 m). Aan te passen met `npm r
 - **Nauwkeurigheid:** planimetrisch ca. 0,2–0,3 m. Geen hoogtes. Plus-objecten zijn niet verplicht en
   kunnen onvolledig zijn. **Bovenleiding staat niet in de BGT**: in het gebied ligt spoor (trein).
 
+- **Aanvulling:** panden die wel in BGT/BAG maar niet in de 3D BAG staan (14 in het gebied, vooral nieuwbouw)
+  worden als blok (LoD 1) getoond: BGT-footprint met dakhoogte = 90e percentiel van het AHN-DSM binnen de
+  footprint. Zonder AHN-signaal (gebouwd na de inwinning, 9 panden) is de hoogte een aanname van 3 m; dit staat
+  in het infopaneel en is te overschrijven.
+
 ### BRK – Kadastrale kaart
 - Percelen (`perceel`) met aanduiding, grootte en labelpositie; grenzen (`kadastralegrens`).
 - **Indicatief.** Grafische weergave: afwijkingen van decimeters tot meer dan een meter zijn mogelijk.
@@ -69,7 +74,8 @@ RD x 105440–105770, y 424510–424850 (330 × 340 m). Aan te passen met `npm r
 
 ### Luchtfoto
 - Nieuwste jaargang met de hoogste resolutie (nu 2026, 8 cm), 16 tegels van ca. 1030 × 1060 px.
-- Geen true-ortho: hoge objecten staan schuin en kunnen de grond afdekken.
+- Geen true-ortho: hoge objecten staan schuin en kunnen de grond afdekken. Daken van hoge panden liggen daardoor
+  1–3 m verschoven t.o.v. de werkelijke footprint (gele contour in de app). Vergelijk randen in de 2D-weergave.
 
 ### Bomen (afgeleid)
 - Er is **geen open bomenregister van Dordrecht** gevonden (alleen de bomenlijst als PDF).
