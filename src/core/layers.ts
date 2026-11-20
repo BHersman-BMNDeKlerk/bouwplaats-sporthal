@@ -24,6 +24,10 @@ export interface LayerState {
   /** Fase 3: zichtbaarheid per elementlaag en botsingsweergave. */
   elementLagen: Record<string, boolean>;
   botsingen: boolean;
+  /** Fase 4: routes (swept path). */
+  routes: boolean;
+  routeSporen: boolean;
+  routeDebug: boolean;
   /** Fase 2 */
   eigenPerceel: boolean;
   grens: boolean;
@@ -80,6 +84,9 @@ export function defaultLayers(): LayerState {
     handmatig: { doorrijhoogte: true, paaltjes: true, hekwerk: true, nietBerijdbaar: true, maatlijn: true, looproute: true, vluchtroute: true, vrijvlak: true, vrijelijn: true, vergundeZone: true },
     elementLagen: {},
     botsingen: true,
+    routes: true,
+    routeSporen: true,
+    routeDebug: false,
     ontwerp: true,
     ontwerpContour: true,
     ontwerpTransparant: false,

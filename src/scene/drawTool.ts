@@ -18,6 +18,8 @@ export interface DrawRequest {
   snap?: (prev: [number, number], target: [number, number]) => [number, number];
   /** Optioneel: extra statustekst op basis van de punten. */
   info?: (pts: [number, number][]) => string;
+  /** Optioneel: vast beginpunt (bv. huidige positie van het voertuig). */
+  begin?: [number, number];
 }
 
 export class DrawTool {
@@ -44,7 +46,7 @@ export class DrawTool {
   start(req: DrawRequest) {
     this.cancel(false);
     this.req = req;
-    this.pts = [];
+    this.pts = req.begin ? [req.begin] : [];
     this.update();
   }
 

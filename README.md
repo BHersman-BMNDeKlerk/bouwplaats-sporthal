@@ -80,6 +80,22 @@ versleepbaar; dubbelklik op een hoekpunt verwijdert het.
 CSV: scheidingsteken `;` `,` tab of spatie, decimale komma of punt, kopregel optioneel; verwisselde X/Y worden herkend.
 Geïmporteerde gegevens worden in het projectbestand bewaard (en automatisch in de browser, IndexedDB).
 
+## Fase 4: draai- en steekbewegingen
+
+Menu **🚚 Route**: kies een voertuig en teken de lijn van de vooras; daarna delen vooruit/achteruit toevoegen.
+Model: fietsmodel op de achteras, oplegger via koppelpunt (`src/vehicles/kinematics.ts`), vooruit Stanley-regelaar op de
+vooras, achteruit pure pursuit op de achteras (bij oplegger: op de opleggeras met knikhoekregeling). Stuurhoek,
+stuursnelheid en knikhoek zijn begrensd; > 0,50 m afwijking of scharen = *niet uitvoerbaar*.
+Voertuigbibliotheek met bewerkbare maten in `src/vehicles/vehicles.ts`.
+
+Verplichte tests (`tests/sweptpath.test.ts`):
+
+1. EU-ringtest: trekker-oplegger 16,5 m blijft binnen een ring van 12,50 m buiten / 5,30 m binnen;
+2. opleggerstraal in stationaire bocht = √(R<sub>kingpin</sub>² − L<sub>t</sub>²), binnen ±0,10 m;
+3. draaicirkel van de fabrikant (stoep-stoep) en muur-muur gereproduceerd binnen ±0,10 m.
+
+> Indicatief hulpmiddel – geen vervanging van gecertificeerde software zoals AutoTURN of Vehicle Tracking.
+
 ## Bediening (kort)
 
 | Actie | Hoe |
@@ -149,7 +165,7 @@ npm test
 
 Dekt o.a. coördinaattransformatie, IFC-contour en automatisch uitlijnen, (RD ⇄ lokaal, RD ⇄ WGS84), tegelindeling, terrein-interpolatie en
 -bemonstering, 3D BAG-verwerking (met een echte 3D BAG-respons van de sporthal), hoogte-overschrijving,
-BGT-classificatie, boomdetectie en undo/redo. In latere fases komen swept path en lasttabel-interpolatie erbij.
+BGT-classificatie, boomdetectie en undo/redo. Ook de swept path-berekening (zie fase 4); in fase 5 komt lasttabel-interpolatie erbij.
 
 ## Fasering
 
@@ -157,8 +173,8 @@ BGT-classificatie, boomdetectie en undo/redo. In latere fases komen swept path e
 |---|---|---|
 | 1 | Ondergrond en omgeving: BGT, 3D BAG, AHN, BRK, luchtfoto, bomen, obstakels, lagenpaneel | gereed |
 | 2 | Eigen inmeting (CSV), KLIC-import, handmatige obstakels, DXF-onderlegger | gereed (KLIC-kleuren nog te verifiëren) |
-| 3 | Bouwplaatselementen (keten, hekken, containers, steigers, …), botsingscontrole, maatvoering | **gereed – ter beoordeling** |
-| 4 | Draai- en steekbewegingen (swept path) met kinematisch model + verplichte tests | gepland |
+| 3 | Bouwplaatselementen (keten, hekken, containers, steigers, …), botsingscontrole, maatvoering | gereed |
+| 4 | Draai- en steekbewegingen (swept path) met kinematisch model + verplichte tests | **gereed – ter beoordeling** |
 | 5 | Kraanopstellingen (toren- en mobiele kraan), lasttabellen, overdraai | gepland |
 | 6 | Output: 2D op schaal, PDF A3/A1 met titelblok, DXF/GeoJSON, PNG, bouwfases | gepland |
 

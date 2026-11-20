@@ -28,12 +28,19 @@ import { EditHandles } from './scene/editHandles';
 import { MeasureTool } from './scene/measureTool';
 import { ElementsLayer } from './scene/elementsLayer';
 import { ElementHandles, type ElementHandleKind } from './scene/elementHandles';
-import { alignToEdge, carsForBay, checkCollisions, ELEMENTS, newElement, snapAngle, totalHeight, type Conflict, type Element, type ElementType, type Obstacle2D } from './core/elements';
+import { alignToEdge, carsForBay, checkCollisions, ELEMENTS, footprint, newElement, snapAngle, totalHeight, type Conflict, type Element, type ElementType, type Obstacle2D } from './core/elements';
 import { elementsOverlay } from './scene/overlays';
 import { SnapIndex, type MeasurePoint } from './core/measure';
 import { BOUWHEK, clampGate, nearestPanel, panels, snapFrom, totalLength, type Pt } from './core/polyline';
 import { editCodes, importBoundary, importDxf, importKlic, importPoints, type ImportContext } from './ui/importDialogs';
 import { themaStyle } from './data/klic';
+import { RouteEngine, newRoute, type Route } from './vehicles/routes';
+import { VEHICLES } from './vehicles/vehicles';
+import { bboxOf, type RouteObstacle } from './vehicles/sweep';
+import type { Sample } from './vehicles/kinematics';
+import { RouteLayer, hitRoute, routesOverlay, ROUTE_KLEUR } from './scene/routeLayer';
+import { routePanel } from './ui/routePanel';
+import { gatePanels } from './core/polyline';
 
 const AUTOSAVE_KEY = 'bouwplaats-sporthal-latourpad:project';
 
@@ -50,6 +57,7 @@ type Selection =
   | { kind: 'klicRef'; id: string }
   | { kind: 'dxf'; id: string }
   | { kind: 'element'; id: string }
+  | { kind: 'route'; id: string }
   | null;
 
 async function start() {
@@ -155,14 +163,128 @@ async function start() {
   const boundary = (): ActiveBoundary => activeBoundary(store.data.inmeting.grens, own);
   let contourKey = '';
   let overlayKey = '';
+
+  // --- fase 4: routes (swept path)
+  const STOEP_KLASSEN = new Set(['voetpad', 'groen', 'struiken', 'bos', 'haag', 'verkeerseiland', 'water', 'oever']);
+  const circle = (x: number, y: number, r: number, n = 16) => [...Array(n + 1)].map((_, i) => [x + r * Math.cos((i / n) * 2 * Math.PI), y + r * Math.sin((i / n) * 2 * Math.PI)]);
+  function routeObstacles(): RouteObstacle[] {
+    const out: RouteObstacle[] = [];
+    const add = (o: Omit<RouteObstacle, 'bbox'>) => { const g = o.ring ?? o.lijn; if (g && g.length >= 2) out.push({ ...o, bbox: bboxOf(g) }); };
+    for (const b of buildings?.items ?? []) {
+      const fp = b.rec.footprint[0];
+      if (!fp || (b.isSporthal && design)) continue;
+      add({ id: `g:${b.rec.id}`, naam: b.isSporthal ? 'bestaande sporthal' : `pand ${b.rec.bagId}`, soort: 'gebouw', ring: fp });
+    }
+    const dp = designPlacement();
+    if (design && dp) for (const r of placeRings(dp, design.model.contour).filter((q) => q.length > 3)) add({ id: 'ontwerp', naam: 'nieuw pand (IFC)', soort: 'nieuw pand', ring: r });
+    for (const e of store.data.elementen) {
+      if (!elVisible(e) || ELEMENTS[e.type]?.vlak) continue;
+      const fp = footprint(e);
+      add({ id: `e:${e.id}`, naam: e.naam || ELEMENTS[e.type].label, soort: 'element', ring: [...fp, fp[0]] });
+    }
+    for (const t0 of trees?.trees ?? []) {
+      const t = effectiveTree(t0, store.data.overschrijvingen.bomen[t0.id]);
+      if (t.verborgen) continue;
+      add({ id: `b:${t.id}`, naam: `boom (kroon vanaf ${t.kroonOnderkant.toFixed(1).replace('.', ',')} m)`, soort: 'boom', ring: circle(t.x, t.y, t.kroonstraal), vrijeHoogte: t.kroonOnderkant });
+      add({ id: `s:${t.id}`, naam: 'boomstam', soort: 'boom', ring: circle(t.x, t.y, 0.3, 8) });
+    }
+    for (const o of obstacles.items) {
+      const r = Math.max(0.15, Math.max(o.spec.breedte, o.spec.diepte) / 2);
+      add({ id: `o:${o.id}`, naam: o.spec.omschrijving, soort: 'paal', ring: [[o.x - r, o.y - r], [o.x + r, o.y - r], [o.x + r, o.y + r], [o.x - r, o.y + r], [o.x - r, o.y - r]] });
+    }
+    for (const m of store.data.handmatig) {
+      const ring = m.coords.length >= 3 ? [...m.coords, m.coords[0]] : undefined;
+      if (m.soort === 'paaltjes') m.coords.forEach((c, i) => add({ id: `h:${m.id}:${i}`, naam: m.naam || 'paaltje', soort: 'paaltjes', ring: circle(c[0], c[1], 0.15, 8) }));
+      else if (m.soort === 'hekwerk') {
+        const ps = panels(m.coords), gates = gatePanels(m.poorten ?? [], ps.length);
+        ps.forEach((p) => { if (!gates.has(p.index)) add({ id: `h:${m.id}`, naam: m.naam || 'bouwhekken', soort: 'hekwerk', lijn: [p.a, p.b] }); });
+      } else if (m.soort === 'doorrijhoogte') {
+        const vh = m.vrijeHoogte ?? 4.0, naam = `${m.naam || 'doorrijhoogte'} (${vh.toFixed(2).replace('.', ',')} m)`;
+        if (m.geom === 'vlak' && ring) add({ id: `h:${m.id}`, naam, soort: 'doorrijhoogte', ring, vrijeHoogte: vh });
+        else add({ id: `h:${m.id}`, naam, soort: 'doorrijhoogte', lijn: m.coords, vrijeHoogte: vh });
+      } else if (m.soort === 'nietBerijdbaar' && ring) add({ id: `h:${m.id}`, naam: m.naam || 'niet berijdbaar', soort: 'niet berijdbaar', ring, alleenWielen: true });
+    }
+    // dubbele id's (hekdelen) samenvoegen tot één melding: uniek per deel maken maar naam gelijk
+    const seen = new Map<string, number>();
+    return out.map((o) => { const n = seen.get(o.id) ?? 0; seen.set(o.id, n + 1); return n ? { ...o, id: `${o.id}#${n}` } : o; });
+  }
+  const routeEngine = new RouteEngine(routeObstacles, (x, y) => {
+    const p = terrain.bgtAt(x, y, L);
+    return p && STOEP_KLASSEN.has(p.cls) ? (CLASS_STYLES[p.cls]?.label ?? p.cls) : null;
+  });
+  const routeLayer = new RouteLayer(frame, (x, y) => terrain.heightAt(x, y));
+  viewer.scene.add(routeLayer.group);
+  let selectedRoute: string | null = null;
+  let routePos = 0, routePlaying = false, routeDebug = false, lastFrameT = 0;
+  let routePanelUpdate: ((s: Sample | null, p: number) => void) | null = null;
+  terrain.overlays.push(routesOverlay(() => store.data.routes, routeEngine, () => selectedRoute));
+  const routeSampleAt = (r: Route, s: number): Sample | null => {
+    const ss = routeEngine.result(r).sim.samples;
+    if (!ss.length) return null;
+    let lo = 0, hi = ss.length - 1;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (ss[mid].s < s) lo = mid + 1; else hi = mid; }
+    return ss[lo];
+  };
+  function showRoutePos() {
+    const r = store.data.routes.find((q) => q.id === selectedRoute);
+    if (!r || !L.routes) { routeLayer.hide(); return; }
+    const smp = routeSampleAt(r, routePos);
+    if (smp) routeLayer.show(r, smp, routeDebug); else routeLayer.hide();
+    routePanelUpdate?.(smp, routePos);
+  }
+  viewer.onFrame(() => {
+    const now = performance.now();
+    const dt = Math.min(0.1, (now - lastFrameT) / 1000);
+    lastFrameT = now;
+    if (!routePlaying) return;
+    const r = store.data.routes.find((q) => q.id === selectedRoute);
+    if (!r) { routePlaying = false; return; }
+    const total = routeEngine.result(r).sim.lengte;
+    routePos += dt * Math.max(2, (r.voertuig.snelheid / 3.6) * 3);
+    if (routePos >= total) { routePos = total; routePlaying = false; refreshInfo(); }
+    showRoutePos();
+  });
+  function startRoute(vehicleId: string) {
+    const v = VEHICLES.find((q) => q.id === vehicleId)!;
+    drawRouteLeg(null, 'vooruit', `${v.naam}: teken de route van de vooras (vooruit)`, (pts) => {
+      const r = newRoute(vehicleId, [{ richting: 'vooruit', punten: pts }]);
+      L.routes = true;
+      store.change('Route getekend', (d) => { d.routes.push(r); });
+      routePos = 0;
+      select({ kind: 'route', id: r.id });
+    });
+  }
+  function drawRouteLeg(begin: [number, number] | null, richting: 'vooruit' | 'achteruit', titel: string, done: (pts: [number, number][]) => void) {
+    if (measure.active) stopMeasure();
+    routePlaying = false;
+    $('viewport').classList.add('drawing');
+    drawTool.start({
+      geom: 'lijn', kleur: ROUTE_KLEUR[richting], titel, begin: begin ?? undefined,
+      onFinish: (coords) => { $('viewport').classList.remove('drawing'); measure.showSnap(null); if (coords.length >= 2) done(coords); },
+      onCancel: () => { $('viewport').classList.remove('drawing'); measure.showSnap(null); },
+    });
+  }
+  function addRouteLeg(id: string, richting: 'vooruit' | 'achteruit') {
+    const r = store.data.routes.find((q) => q.id === id);
+    if (!r) return;
+    const begin = routeEngine.nextStart(r, richting);
+    const wat = richting === 'vooruit' ? 'de vooras' : r.voertuig.soort === 'oplegger' ? 'de as van de oplegger' : 'de achteras';
+    drawRouteLeg(begin, richting, `Deel ${r.legs.length + 1} ${richting}: teken de lijn van ${wat}`, (pts) => {
+      store.change(`Routedeel ${richting} toegevoegd`, (d) => { const x = d.routes.find((q) => q.id === id); if (x) x.legs.push({ richting, punten: pts }); });
+      const nr = store.data.routes.find((q) => q.id === id);
+      if (nr) { routePos = routeEngine.result(nr).sim.lengte; showRoutePos(); refreshInfo(); }
+    });
+  }
   const applyScene = () => {
     // 2D-lagen opnieuw tekenen als de eigen invoer veranderd is
     const d = store.data;
     computeConflicts();
     elementsLayer.apply(d.elementen, elVisible, L.botsingen ? conflictSet : new Set(), selectedElement);
-    const ok = JSON.stringify([d.inmeting, d.klic, d.onderleggers, d.handmatig, selectedManual, d.elementen, [...conflictSet], selectedElement, L.elementLagen, L.botsingen]);
+    routeEngine.obstacleKey = JSON.stringify([d.handmatig, d.elementen, d.overschrijvingen.bomen, designPlacement(), L.elementLagen, L.bgtKlassen]);
+    const ok = JSON.stringify([d.inmeting, d.klic, d.onderleggers, d.handmatig, selectedManual, d.elementen, [...conflictSet], selectedElement, L.elementLagen, L.botsingen, d.routes, selectedRoute, L.routes, L.routeSporen]);
     terrain.ownParcelHighlight = !d.inmeting.grens;
     if (ok !== overlayKey) { overlayKey = ok; terrain.redraw(L); }
+    if (selectedRoute) showRoutePos(); else routeLayer.hide();
     userLayer.apply(d, L, selectedManual);
     renderWarnings(data, boundary(), L.botsingen ? conflictSet.size : 0);
     const ov = store.data.overschrijvingen;
@@ -222,6 +344,9 @@ async function start() {
       elementen: store.data.elementen,
       conflicts,
       onSelectElement: (id) => { const e = store.data.elementen.find((q) => q.id === id); if (e) { select({ kind: 'element', id }); viewer.focus(new THREE.Vector3(frame.toLocal(e.x, e.y, 0).x, terrain.heightAt(e.x, e.y) ?? 0, frame.toLocal(e.x, e.y, 0).z), 25); } },
+      routeStatus: (r) => { const res = routeEngine.result(r); return { ok: res.sim.uitvoerbaar, botsingen: res.conflicts.length }; },
+      onSelectRoute: (id) => select({ kind: 'route', id }),
+      onRouteVisible: (id, v) => { const r = store.data.routes.find((q) => q.id === id); if (r) r.zichtbaar = v; overlayKey = ''; applyScene(); renderPanel(); autosave(); },
       onClearBezet: () => store.change('Bezette parkeervakken gewist', (pd) => { pd.elementen = pd.elementen.filter((q) => !q.groep?.startsWith('bezet')); }),
       project: store.data,
       boundary: boundary(),
@@ -290,7 +415,16 @@ async function start() {
     selectedManual = s?.kind === 'manual' ? s.id : null;
     handles.set(selectedManual ? store.data.handmatig.find((q) => q.id === selectedManual) ?? null : null);
     if (prevManual !== selectedManual) applyScene();
+    const prevRoute = selectedRoute;
+    selectedRoute = s?.kind === 'route' ? s.id : null;
+    if (prevRoute !== selectedRoute) {
+      routePlaying = false;
+      if (selectedRoute) routePos = 0;
+      if (!selectedRoute) { routePanelUpdate = null; routeLayer.hide(); }
+      applyScene();
+    }
     refreshInfo();
+    if (selectedRoute) showRoutePos();
   }
   function refreshInfo() {
     const s = selection;
@@ -328,6 +462,25 @@ async function start() {
         rotStep,
         setRotStep: (n) => { rotStep = n; try { localStorage.setItem('bouwplaats-sporthal:draaistap', String(n)); } catch { /* */ } refreshInfo(); },
       });
+    } else if (s.kind === 'route') {
+      const r = store.data.routes.find((q) => q.id === s.id);
+      if (!r) { routePanelUpdate = null; routeLayer.hide(); return info.hide(); }
+      const res = routeEngine.result(r);
+      routePos = Math.min(routePos, res.sim.lengte);
+      const p = routePanel(store, r, res, routePos, {
+        addLeg: (richting) => addRouteLeg(r.id, richting),
+        removeLastLeg: () => store.change('Routedeel verwijderd', (d) => { const x = d.routes.find((q) => q.id === r.id); if (x) x.legs.pop(); }),
+        remove: () => { store.change('Route verwijderd', (d) => { d.routes = d.routes.filter((q) => q.id !== r.id); }); select(null); },
+        setPos: (v) => { routePos = v; routePlaying = false; showRoutePos(); },
+        togglePlay: () => { if (!routePlaying && routePos >= res.sim.lengte - 0.01) routePos = 0; routePlaying = !routePlaying; return routePlaying; },
+        playing: () => routePlaying,
+        debug: routeDebug,
+        setDebug: (on) => { routeDebug = on; showRoutePos(); },
+        focus: (x, y) => { const q = frame.toLocal(x, y, 0); viewer.focus(new THREE.Vector3(q.x, terrain.heightAt(x, y) ?? 0, q.z), 30); },
+      });
+      info.open(r.naam, `${r.voertuig.naam} · ${r.legs.length} deel/delen · ${(Math.round(res.sim.lengte * 10) / 10).toString().replace('.', ',')} m`, ...p.nodes);
+      routePanelUpdate = p.update;
+      p.update(routeSampleAt(r, routePos), routePos);
     } else if (s.kind === 'dxf') {
       info.showDxf(s.id, !!design, () => { store.change('Onderlegger verwijderd', (d) => { d.onderleggers = d.onderleggers.filter((k) => k.id !== s.id); }); select(null); });
     }
@@ -349,6 +502,7 @@ async function start() {
     | { kind: 'element'; e: Element; point: THREE.Vector3 }
     | { kind: 'survey'; s: SurveyHit; point: THREE.Vector3 }
     | { kind: 'klic'; k: KlicHit; point: THREE.Vector3 }
+    | { kind: 'route'; r: Route; point: THREE.Vector3 }
     | { kind: 'terrain'; point: THREE.Vector3 };
   /** Meters per schermpixel op een punt (voor aanwijstoleranties). */
   const mppAt = (p: THREE.Vector3) => {
@@ -393,6 +547,8 @@ async function start() {
     if (sv && sv.kind !== 'grenslijn') return { kind: 'survey', s: sv, point: tp };
     const mo = hitManual(store.data, L, rd.x, rd.y, tol);
     if (mo) return { kind: 'manual', o: mo, point: tp };
+    const ro = hitRoute(store.data.routes, routeEngine, L, rd.x, rd.y, tol);
+    if (ro) return { kind: 'route', r: ro, point: tp };
     if (sv) return { kind: 'survey', s: sv, point: tp };
     const kh = hitKlic(store.data, L, rd.x, rd.y, tol);
     if (kh) return { kind: 'klic', k: kh, point: tp };
@@ -528,6 +684,7 @@ async function start() {
     if (!hit) return select(null);
     if (hit.kind === 'element') return select({ kind: 'element', id: hit.e.id });
     if (hit.kind === 'manual') return select({ kind: 'manual', id: hit.o.id });
+    if (hit.kind === 'route') return select({ kind: 'route', id: hit.r.id });
     if (hit.kind === 'survey') {
       if (hit.s.kind === 'grenslijn') return select({ kind: 'grens' });
       return select({ kind: 'meetpunt', index: hit.s.index, grens: hit.s.kind === 'grenspunt' });
@@ -614,7 +771,13 @@ async function start() {
   };
   const fileImport = $('fileImport') as HTMLInputElement;
   let importKind = '';
-  const menus = [['btnImport', 'menuImport'], ['btnDraw', 'menuDraw']] as const;
+  const menus = [['btnImport', 'menuImport'], ['btnDraw', 'menuDraw'], ['btnRoute', 'menuRoute']] as const;
+  {
+    const mr = $('menuRoute');
+    mr.append(h('div', { class: 'mcat' }, 'Route tekenen voor'));
+    for (const v of VEHICLES) mr.append(h('button', { onclick: () => { closeMenus(); startRoute(v.id); } }, v.naam));
+    mr.append(h('div', { class: 'note', style: { margin: '6px 10px', maxWidth: '300px' } }, 'Teken de lijn van de vooras; daarna kun je in het paneel delen vooruit of achteruit toevoegen. Indicatief – geen vervanging van AutoTURN e.d.'));
+  }
   const closeMenus = () => { for (const [, mid] of menus) $(mid).hidden = true; };
   for (const [bid, mid] of menus) $(bid).onclick = (e) => { e.stopPropagation(); const was = $(mid).hidden; closeMenus(); $(mid).hidden = !was; };
   document.addEventListener('click', closeMenus);
@@ -739,7 +902,7 @@ async function start() {
       }
     }
     menu.append(h('hr'), h('button', { onclick: () => { menu.hidden = true; startOccupy(); } }, 'Parkeervakken bezet (worst case)…'));
-    $('btnElement').onclick = (e) => { e.stopPropagation(); const was = menu.hidden; for (const id of ['menuImport', 'menuDraw']) $(id).hidden = true; menu.hidden = !was; };
+    $('btnElement').onclick = (e) => { e.stopPropagation(); const was = menu.hidden; for (const id of ['menuImport', 'menuDraw', 'menuRoute']) $(id).hidden = true; menu.hidden = !was; };
     document.addEventListener('click', () => { menu.hidden = true; });
   }
   // parkeervakken bezet: zone tekenen → auto's in alle BGT-parkeervakken erin

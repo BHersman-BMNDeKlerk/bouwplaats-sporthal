@@ -85,6 +85,19 @@ export function helpContent(): Node {
   <p><b>Parkeervakken bezet</b> (menu ＋ Element): teken een zone; in alle BGT-parkeervakken erin komt een auto (worst case voor
   draaibewegingen). Wissen via het lagenpaneel.</p>
   <p><b>Routes en vlakken</b> (menu Tekenen): looproute, vluchtroute (stippellijn met pijlen), vrij vlak en vrije lijn met label.</p>
+  <h3>Draai- en steekbewegingen (menu 🚚 Route)</h3>
+  <ul>
+    <li>Kies een voertuig en teken de lijn van de <b>vooras</b> (klik punten, dubbelklik of Enter = klaar). Een nieuw deel
+      (<b>+ Vooruit</b> / <b>+ Achteruit</b>) begint waar het voertuig staat. Achteruit volgt de achteras, bij een oplegger de as van de oplegger.</li>
+    <li>De app rekent met een kinematisch model (fietsmodel, oplegger met koppelpunt) met begrensde stuurhoek, stuursnelheid en knikhoek.
+      Wijkt het voertuig meer dan 0,50 m af van de lijn of schaart de oplegger, dan staat er <b>Niet uitvoerbaar</b>.</li>
+    <li>Getoond: omhullende (swept path), wielsporen, spookbeelden en botsingen met gebouwen, het nieuwe pand, elementen, bomen
+      (kroon alleen als die lager is dan het voertuig), palen, paaltjes, bouwhekken (poorten zijn vrij), doorrijhoogtes, niet-berijdbare vlakken
+      en wielen over trottoir/groen. Klik een melding om erheen te springen.</li>
+    <li>Afspelen met de schuif of ▶; <i>Debug</i> toont stuurhoek, draaipool en knikhoek. Alle voertuigmaten zijn te bewerken;
+      een opgegeven draaicirkel (stoep-stoep) van de fabrikant gaat voor de maximale stuurhoek.</li>
+    <li><b>Indicatief</b> – geen vervanging van gecertificeerde software zoals AutoTURN.</li>
+  </ul>
   <h3>Meten en maatlijnen</h3>
   <p><b>📏 Meten</b> (<kbd>M</kbd>): klik punten op de kaart of op gebouwen. Per stuk zie je de horizontale afstand, het
   hoogteverschil (ΔH) en de 3D-afstand, plus het totaal. Punten springen naar hoeken van gebouwen, het nieuwe pand,

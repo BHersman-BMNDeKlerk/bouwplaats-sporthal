@@ -8,6 +8,7 @@ import { TREE_COLORS } from '../scene/treesLayer';
 import { h } from './dom';
 import type { Conflict, Element } from '../core/elements';
 import type { ProjectData } from '../core/project';
+import type { Route } from '../vehicles/routes';
 import type { ActiveBoundary } from '../core/boundary';
 import { PUNT_SOORTEN, type PuntSoort } from '../data/csvPoints';
 import { KLIC_KLEUREN_GEVERIFIEERD, themaStyle, type KlicData } from '../data/klic';
@@ -35,6 +36,10 @@ export interface LayersPanelOpts {
   conflicts: Conflict[];
   onSelectElement: (id: string) => void;
   onClearBezet: () => void;
+  /** Fase 4 */
+  routeStatus: (r: Route) => { ok: boolean; botsingen: number };
+  onSelectRoute: (id: string) => void;
+  onRouteVisible: (id: string, v: boolean) => void;
   onOpen: (what: { kind: 'klicRef' | 'dxf'; id: string } | { kind: 'grens' } | { kind: 'codes' }) => void;
 }
 
@@ -151,6 +156,20 @@ export function renderLayersPanel(o: LayersPanelOpts) {
     } else if (!ids.length) root.append(h('div', { class: 'note', style: { color: '#1b5e20' } }, '✔ Geen botsingen'));
     if (o.elementen.some((e) => e.groep?.startsWith('bezet')))
       root.append(h('div', { class: 'note' }, h('a', { href: '#', onclick: (ev: Event) => { ev.preventDefault(); o.onClearBezet(); } }, 'Bezette parkeervakken wissen')));
+  }
+
+  // --- Routes (fase 4)
+  if (o.project.routes.length) {
+    root.append(h('h2', {}, 'Routes (swept path)'));
+    root.append(check('Routes tonen', () => L.routes, (v) => (L.routes = v), 'all'));
+    root.append(check('Wielsporen', () => L.routeSporen, (v) => (L.routeSporen = v), 'terrain', { sub: true }));
+    for (const r of o.project.routes) {
+      const st = o.routeStatus(r);
+      const cb = h('input', { type: 'checkbox', checked: r.zichtbaar, onchange: () => o.onRouteVisible(r.id, cb.checked) }) as HTMLInputElement;
+      root.append(h('div', { class: 'lrow sub' }, cb,
+        h('a', { href: '#', onclick: (ev: Event) => { ev.preventDefault(); o.onSelectRoute(r.id); } }, r.naam),
+        h('span', { style: { color: !st.ok || st.botsingen ? '#b71c1c' : '#1b5e20', fontSize: '12px' } }, !st.ok ? '✖ niet uitvoerbaar' : st.botsingen ? `⚠ ${st.botsingen}` : '✔')));
+    }
   }
 
   // --- Perceelgrens en inmeting
