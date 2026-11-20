@@ -107,7 +107,10 @@ export function helpContent(): Node {
       gebouwen, het nieuwe pand, eigen elementen en bomen; overlappende zwenkgebieden van meerdere kranen.</li>
     <li><b>Kan last X op positie Y?</b> Vul de last in, klik een punt: OK of NIET OK op basis van radius en lasttabel (lineair
       geïnterpoleerd, buiten de tabel altijd NIET OK – er wordt nooit geëxtrapoleerd). Esc stopt.</li>
-    <li>De meegeleverde lasttabellen zijn voorbeelden: gebruik altijd de tabel van de fabrikant voor de gekozen configuratie.</li>
+    <li><b>Slepen:</b> pak een kraan (mast, onderwagen of stempelvlak) en sleep hem naar een andere plek; de controles lopen direct mee. Ctrl+Z zet hem terug.</li>
+    <li><b>Liebherr MK 88 Plus</b> (mobiele torenkraan 45 m) staat in het menu met het lastblad van de verhuurder: kies in het paneel de
+      configuratie (giek 0°, 0° Plus, 15°, 30°, 45° × afstempeling 7,30 × 7,00 of 7,30 × 5,75 m).</li>
+    <li>De meegeleverde lasttabellen van de algemene toren- en mobiele kraan zijn voorbeelden: gebruik altijd de tabel van de fabrikant voor de gekozen configuratie.</li>
   </ul>
   <h3>Meten en maatlijnen</h3>
   <p><b>📏 Meten</b> (<kbd>M</kbd>): klik punten op de kaart of op gebouwen. Per stuk zie je de horizontale afstand, het

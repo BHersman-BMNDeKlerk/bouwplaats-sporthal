@@ -92,3 +92,25 @@ describe('Kraancontroles', () => {
     expect(outriggerPads(c)).toHaveLength(4);
   });
 });
+
+import { newMK88, applyConfig, towerRadius } from '../src/cranes/cranes';
+describe('Liebherr MK 88 Plus (lastblad)', () => {
+  it('neemt het lastblad exact over en interpoleert', () => {
+    const k = newMK88(0, 0);
+    expect(k.tabellen).toHaveLength(9);
+    expect(maxLoadAt(k.lasttabel, 12)).toBe(7.3);
+    expect(maxLoadAt(k.lasttabel, 15)).toBeCloseTo(5.9, 10);
+    expect(canLift(k, 20, 0, 4.4).ok).toBe(true);
+    expect(canLift(k, 20, 0, 4.5).ok).toBe(false);
+    expect(canLift(k, 22, 0, 1).ok).toBe(false); // tabel loopt tot 20 m: niet extrapoleren
+  });
+  it('configuratie zet tabel, giekhoek en afstempelbreedte', () => {
+    const k = applyConfig(newMK88(0, 0), 7); // 30°, 7,30 × 5,75
+    expect(k.stempelBreedte).toBe(5.75);
+    expect(k.giekHoek).toBe(30);
+    expect(maxLoadAt(k.lasttabel, 10)).toBe(5.2);
+    expect(towerRadius(k)).toBeCloseTo(45 * Math.cos(Math.PI / 6), 6);
+    const p = applyConfig(newMK88(0, 0), 1); // 0° Plus
+    expect(maxLoadAt(p.lasttabel, 14)).toBe(7.1);
+  });
+});

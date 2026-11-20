@@ -103,6 +103,8 @@ controles op overdraai (perceelgrens, openbare weg, buurpanden), hoogteconflicte
 en overlappende zwenkgebieden. *Kan last X op positie Y?* geeft OK / NIET OK via lineaire interpolatie in de lasttabel;
 buiten de tabel wordt nooit geëxtrapoleerd. Rekenlogica: `src/cranes/cranes.ts`, tests: `tests/cranes.test.ts`.
 De standaard lasttabellen zijn voorbeelden – vervang ze door de tabel van de fabrikant.
+Kranen zijn versleepbaar. Opgenomen uit een lastblad: **Liebherr MK 88 Plus** (mobiele torenkraan, 45 m giek) met 9 configuraties
+(giekstand × afstempeling); alleen de rijen 4–20 m vlucht stonden op het aangeleverde blad – vul de rest aan in het kraanpaneel.
 
 ## Bediening (kort)
 

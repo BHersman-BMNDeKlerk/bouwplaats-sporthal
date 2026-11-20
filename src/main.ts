@@ -41,7 +41,7 @@ import type { Sample } from './vehicles/kinematics';
 import { RouteLayer, hitRoute, routesOverlay, ROUTE_KLEUR } from './scene/routeLayer';
 import { routePanel } from './ui/routePanel';
 import { gatePanels } from './core/polyline';
-import { canLift, craneWarnings, newMobileCrane, newTowerCrane, overlaps, type Crane, type CraneEnv, type CraneWarning, type LiftCheck } from './cranes/cranes';
+import { canLift, craneWarnings, newMK88, newMobileCrane, newTowerCrane, overlaps, type Crane, type CraneEnv, type CraneWarning, type LiftCheck } from './cranes/cranes';
 import { CraneLayer, cranesOverlay, hitCrane, type LiftMarker } from './scene/craneLayer';
 import { cranePanel } from './ui/cranePanel';
 
@@ -286,14 +286,16 @@ async function start() {
   const craneLayer = new CraneLayer(frame, (x, y) => terrain.heightAt(x, y));
   viewer.scene.add(craneLayer.group);
   let selectedCrane: string | null = null;
-  let cranePlace: 'toren' | 'mobiel' | null = null;
+  let cranePlace: 'toren' | 'mobiel' | 'mk88' | null = null;
+  let craneDrag: { id: string; ox: number; oy: number; sx: number; sy: number; start: [number, number]; moved: boolean } | null = null;
+  let craneHidden: string | null = null;
   let craneMove: string | null = null;
   let liftMode: number | null = null;
   let liftLast = 2.0;
   let liftMarker: LiftMarker | null = null;
   let craneWarn = new Map<string, CraneWarning[]>();
   let craneOverlap: { a: string; b: string; tekst: string }[] = [];
-  terrain.overlays.push(cranesOverlay(() => store.data.kranen, () => selectedCrane, () => liftMarker, () => new Set([...craneWarn].filter(([, w]) => w.some((q) => q.ernst === 'conflict')).map(([id]) => id))));
+  terrain.overlays.push(cranesOverlay(() => store.data.kranen, () => selectedCrane, () => liftMarker, () => new Set([...craneWarn].filter(([, w]) => w.some((q) => q.ernst === 'conflict')).map(([id]) => id)), () => craneHidden));
   function craneEnv(k: Crane): Omit<CraneEnv, 'maaiveld'> {
     const b = boundary();
     const wegen: CraneEnv['wegen'] = [];
@@ -332,13 +334,13 @@ async function start() {
     for (const k of vis) craneWarn.set(k.id, craneWarnings(k, { ...craneEnv(k), maaiveld: terrain.heightAt(k.x, k.y) ?? 0 }));
     craneOverlap = overlaps(vis);
   }
-  function startCranePlace(t: 'toren' | 'mobiel') {
+  function startCranePlace(t: 'toren' | 'mobiel' | 'mk88') {
     if (drawTool.active) drawTool.cancel();
     if (measure.active) stopMeasure();
     select(null);
     cranePlace = t;
     $('viewport').classList.add('drawing');
-    status(`${t === 'toren' ? 'Torenkraan' : 'Mobiele kraan'} plaatsen: klik op de kaart (hart van de kraan) · Esc = annuleren`, 0);
+    status(`${t === 'toren' ? 'Torenkraan' : t === 'mk88' ? 'Liebherr MK 88 Plus' : 'Mobiele kraan'} plaatsen: klik op de kaart (hart van de kraan) · Esc = annuleren`, 0);
   }
   function stopCraneModes() {
     cranePlace = null; craneMove = null; liftMode = null;
@@ -800,8 +802,8 @@ async function start() {
       const rd = frame.toRD(hit.point.x, hit.point.y, hit.point.z);
       const x = Math.round(rd.x * 100) / 100, y = Math.round(rd.y * 100) / 100;
       if (cranePlace) {
-        const k = cranePlace === 'toren' ? newTowerCrane(x, y) : newMobileCrane(x, y);
-        const n = store.data.kranen.filter((q) => q.type === k.type).length;
+        const k = cranePlace === 'toren' ? newTowerCrane(x, y) : cranePlace === 'mk88' ? newMK88(x, y) : newMobileCrane(x, y);
+        const n = store.data.kranen.filter((q) => q.naam.startsWith(k.naam)).length;
         if (n) k.naam += ` ${n + 1}`;
         stopCraneModes();
         L.kranen = true;
@@ -920,6 +922,8 @@ async function start() {
     mc.append(
       h('button', { onclick: () => { closeMenus(); startCranePlace('toren'); } }, 'Torenkraan plaatsen'),
       h('button', { onclick: () => { closeMenus(); startCranePlace('mobiel'); } }, 'Mobiele kraan plaatsen'),
+      h('div', { class: 'mcat' }, 'Uit lastblad'),
+      h('button', { onclick: () => { closeMenus(); startCranePlace('mk88'); } }, 'Liebherr MK 88 Plus – mobiele torenkraan 45 m'),
       h('hr'),
       h('button', { onclick: () => { closeMenus(); select({ kind: 'lift' }); } }, 'Kan last X op positie Y? (alle kranen)'),
     );
@@ -1160,6 +1164,63 @@ async function start() {
     updateElement(d.id, { move: `${e.naam} verplaatst`, rotate: `${e.naam} gedraaid` }[d.kind as 'move' | 'rotate'] ?? `${e.naam} maat aangepast`, (x) => Object.assign(x, now));
   });
   viewer.onFrame(() => { if (elHandles.el) elHandles.scale(mppAt(viewer.controls.target)); });
+
+  // --- kranen slepen (fase 5)
+  $('viewport').addEventListener('pointerdown', (ev) => {
+    if (ev.button !== 0 || drawTool.active || measure.active || placing || cranePlace || craneMove || liftMode || !L.kranen) return;
+    // alleen de kraan zelf (3D-delen of voetafdruk op maaiveld), ook onder boomkronen
+    const rect = viewer.renderer.domElement.getBoundingClientRect();
+    ndc.set(((ev.clientX - rect.left) / rect.width) * 2 - 1, -((ev.clientY - rect.top) / rect.height) * 2 + 1);
+    raycaster.setFromCamera(ndc, viewer.camera);
+    let kr: Crane | null = null;
+    for (const hh of raycaster.intersectObjects(craneLayer.pickable(), true)) {
+      const id = hh.object.userData.id;
+      kr = store.data.kranen.find((q) => q.id === id) ?? null;
+      if (kr) break;
+    }
+    const p = terrainRD(ev);
+    if (!p) return;
+    if (!kr) { const tp = terrain.intersectRay(raycaster.ray); kr = hitCrane(store.data.kranen, p[0], p[1], tp ? Math.max(0.5, 4 * mppAt(tp)) : 1); }
+    if (!kr) return;
+    ev.stopPropagation();
+    craneDrag = { id: kr.id, ox: kr.x, oy: kr.y, sx: ev.clientX, sy: ev.clientY, start: p, moved: false };
+    viewer.controls.enabled = false;
+  }, { capture: true });
+  let craneDragFrame = false;
+  window.addEventListener('pointermove', (ev) => {
+    if (!craneDrag) return;
+    if (!craneDrag.moved && Math.hypot(ev.clientX - craneDrag.sx, ev.clientY - craneDrag.sy) < 4) return;
+    const p = terrainRD(ev);
+    if (!p) return;
+    const k = store.data.kranen.find((q) => q.id === craneDrag!.id);
+    if (!k) return;
+    if (!craneDrag.moved) { craneDrag.moved = true; craneHidden = k.id; liftMarker = null; terrain.redraw(L); }
+    k.x = Math.round((craneDrag.ox + p[0] - craneDrag.start[0]) * 100) / 100;
+    k.y = Math.round((craneDrag.oy + p[1] - craneDrag.start[1]) * 100) / 100;
+    if (!craneDragFrame) {
+      craneDragFrame = true;
+      requestAnimationFrame(() => {
+        craneDragFrame = false;
+        craneLayer.apply(store.data.kranen, L.kranen, craneDrag?.id ?? selectedCrane, null);
+        status(`${k.naam}: ${fmtRD(k.x, k.y)} – loslaten om te plaatsen`, 0);
+      });
+    }
+  });
+  window.addEventListener('pointerup', () => {
+    if (!craneDrag) return;
+    const d = craneDrag;
+    craneDrag = null;
+    viewer.controls.enabled = true;
+    if (!d.moved) { select({ kind: 'crane', id: d.id }); return; }
+    craneHidden = null;
+    const k = store.data.kranen.find((q) => q.id === d.id);
+    if (!k) return;
+    const nx = k.x, ny = k.y;
+    k.x = d.ox; k.y = d.oy;
+    store.change(`${k.naam} verplaatst`, (pd) => { const x = pd.kranen.find((q) => q.id === d.id); if (x) { x.x = nx; x.y = ny; } });
+    if (selectedCrane !== d.id) select({ kind: 'crane', id: d.id });
+    status(`${k.naam} verplaatst – controles bijgewerkt`);
+  });
 
   // --- slepen van eigen objecten (hoekpunten, tussenpunten, poorten, geheel)
   type Drag = {

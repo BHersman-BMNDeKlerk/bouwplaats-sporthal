@@ -6,6 +6,17 @@
 
 export interface LoadPoint { radius: number; last: number }
 
+/** Eén configuratie uit het lastblad (bv. giekstand × afstempeling). */
+export interface LoadConfig {
+  naam: string;
+  tabel: LoadPoint[];
+  /** Giekhoek (°) bij deze tabel (torenkraan met verstelbare giek). */
+  giekHoek?: number;
+  /** Stempelbreedte (m) bij deze tabel. */
+  stempelBreedte?: number;
+  opmerking?: string;
+}
+
 export interface CraneBase {
   id: string;
   naam: string;
@@ -19,6 +30,11 @@ export interface CraneBase {
   zichtbaar: boolean;
   /** Bron/omschrijving van de lasttabel. */
   tabelBron?: string;
+  /** Meerdere tabellen uit het lastblad; `lasttabel` is de actieve. */
+  tabellen?: LoadConfig[];
+  actieveTabel?: number;
+  /** Algemene gegevens / aannames (tekst voor het paneel). */
+  gegevens?: string;
 }
 
 export interface TowerCrane extends CraneBase {
@@ -34,6 +50,15 @@ export interface TowerCrane extends CraneBase {
   contragiekLengte: number;
   /** Hoogte van de onderkant contragiek boven maaiveld (m). */
   contragiekHoogte: number;
+  /** Giekhoek (°, verstelbare giek; 0 = horizontaal). */
+  giekHoek?: number;
+  /** Mobiele torenkraan: onderwagen met stempels (als ingevuld). */
+  rotatie?: number;
+  stempelLengte?: number;
+  stempelBreedte?: number;
+  plaat?: number;
+  onderwagenLengte?: number;
+  onderwagenBreedte?: number;
 }
 
 export interface MobileCrane extends CraneBase {
@@ -60,6 +85,26 @@ export interface MobileCrane extends CraneBase {
 
 export type Crane = TowerCrane | MobileCrane;
 
+/**
+ * Liebherr MK 88 Plus (mobiele torenkraan, 45 m giek) – lastblad van de verhuurder.
+ * Alleen de rijen 4–20 m vlucht zijn overgenomen (rest niet leesbaar); boven 20 m
+ * is daarom niets toegestaan tot de tabel is aangevuld.
+ */
+const R = [4, 6, 8, 10, 12, 14, 16, 18, 20];
+const rows = (v: number[]) => R.map((radius, i) => ({ radius, last: v[i] }));
+const c18 = rows(R.map(() => 1.8));
+export const MK88_TABELLEN: LoadConfig[] = [
+  { naam: 'Giek 0° – gestempeld 7,30 × 7,00 m', giekHoek: 0, stempelBreedte: 7.0, tabel: rows([8, 8, 8, 8, 7.3, 6.3, 5.5, 4.9, 4.4]) },
+  { naam: 'Giek 0° Plus* – gestempeld 7,30 × 7,00 m', giekHoek: 0, stempelBreedte: 7.0, tabel: rows([8, 8, 8, 8, 8, 7.1, 6.2, 5.5, 4.9]), opmerking: 'Plus-modus (*voorwaarden volgens het lastblad)' },
+  { naam: 'Giek 15° – gestempeld 7,30 × 7,00 m', giekHoek: 15, stempelBreedte: 7.0, tabel: c18 },
+  { naam: 'Giek 30° – gestempeld 7,30 × 7,00 m', giekHoek: 30, stempelBreedte: 7.0, tabel: rows([6, 6, 6, 6, 5.2, 4.6, 4.2, 3.8, 3.5]) },
+  { naam: 'Giek 45° – gestempeld 7,30 × 7,00 m', giekHoek: 45, stempelBreedte: 7.0, tabel: c18 },
+  { naam: 'Giek 0° – gestempeld 7,30 × 5,75 m', giekHoek: 0, stempelBreedte: 5.75, tabel: rows([8, 8, 8, 8, 6.4, 5.4, 4.6, 4.0, 3.6]) },
+  { naam: 'Giek 15° – gestempeld 7,30 × 5,75 m', giekHoek: 15, stempelBreedte: 5.75, tabel: c18 },
+  { naam: 'Giek 30° – gestempeld 7,30 × 5,75 m', giekHoek: 30, stempelBreedte: 5.75, tabel: rows([6, 6, 6, 5.2, 4.5, 4.0, 3.6, 3.3, 3.0]) },
+  { naam: 'Giek 45° – gestempeld 7,30 × 5,75 m', giekHoek: 45, stempelBreedte: 5.75, tabel: c18 },
+];
+
 /** Voorbeeldtabellen: indicatief, vervang door de tabel van de fabrikant. */
 export const VOORBEELD_TOREN: LoadPoint[] = [
   { radius: 2.5, last: 6 }, { radius: 15, last: 6 }, { radius: 20, last: 4.5 }, { radius: 25, last: 3.6 },
@@ -78,6 +123,31 @@ export function newTowerCrane(x: number, y: number): TowerCrane {
     id: uid('k'), type: 'toren', naam: 'Torenkraan', x, y, richting: 0, lasttabel: VOORBEELD_TOREN.map((p) => ({ ...p })), ringInterval: 5, zichtbaar: true,
     tabelBron: 'voorbeeldtabel (indicatief)', voetLengte: 4.5, voetBreedte: 4.5, haakhoogte: 30, giekHoogte: 2.5, giekLengte: 50, contragiekLengte: 15, contragiekHoogte: 31,
   };
+}
+
+export function newMK88(x: number, y: number): TowerCrane {
+  const c: TowerCrane = {
+    id: uid('k'), type: 'toren', naam: 'Liebherr MK 88 Plus', x, y, richting: 0, lasttabel: [], ringInterval: 4, zichtbaar: true,
+    tabelBron: 'Lastblad verhuurder: 45 meter mobiele torenkraan Liebherr MK 88 Plus (rijen 4–20 m)',
+    voetLengte: 0, voetBreedte: 0, haakhoogte: 30, giekHoogte: 1.5, giekLengte: 45, contragiekLengte: 3.7, contragiekHoogte: 2.5,
+    rotatie: 0, stempelLengte: 7.3, stempelBreedte: 7.0, plaat: 1.0, onderwagenLengte: 13.0, onderwagenBreedte: 2.75,
+    tabellen: MK88_TABELLEN.map((t) => ({ ...t, tabel: t.tabel.map((p) => ({ ...p })) })),
+    gegevens: 'Uit het lastblad: eigen gewicht 48,0 t · min. doorrijhoogte 4,00 m · breedte rijstand 2,75 m · ballastradius 3,70 m · afstempellengte 7,30 m · afstempelbreedte 5,75–7,00 m · stempelschotten 1,00 × 1,00 m · optoppen 0°/15°/30°/45° · elektrisch 32 of 63 A. ' +
+      'Aannames (controleren): haakhoogte bij giek 0° ≈ 30 m (Liebherr-catalogus), lengte onderwagen 13,0 m, hoogte ballast 2,5 m.',
+  };
+  return applyConfig(c, 0);
+}
+
+/** Zet een tabel uit het lastblad actief (incl. giekhoek en stempelbreedte). */
+export function applyConfig<T extends Crane>(c: T, i: number): T {
+  const t = c.tabellen?.[i];
+  if (!t) return c;
+  c.actieveTabel = i;
+  c.lasttabel = t.tabel.map((p) => ({ ...p }));
+  if (t.giekHoek != null && c.type === 'toren') c.giekHoek = t.giekHoek;
+  if (t.giekHoek != null && c.type === 'mobiel') c.giekHoek = t.giekHoek;
+  if (t.stempelBreedte != null) (c as any).stempelBreedte = t.stempelBreedte;
+  return c;
 }
 
 export function newMobileCrane(x: number, y: number): MobileCrane {
@@ -142,9 +212,20 @@ export function tableToText(t: LoadPoint[]): string {
 export function reach(c: Crane): { min: number; max: number } {
   const t = normalizeTable(c.lasttabel);
   const tMin = t.length ? t[0].radius : 0, tMax = t.length ? t[t.length - 1].radius : 0;
-  if (c.type === 'toren') return { min: tMin, max: Math.min(tMax, c.giekLengte) };
+  if (c.type === 'toren') return { min: tMin, max: Math.min(tMax, towerRadius(c)) };
   return { min: tMin, max: tMax };
 }
+
+/** Maximale vlucht van de torenkraan (giek × cos giekhoek). */
+export function towerRadius(c: TowerCrane): number {
+  return c.giekLengte * Math.cos(((c.giekHoek ?? 0) * Math.PI) / 180);
+}
+/** Hoogte van de giekpunt boven maaiveld. */
+export function towerTipHeight(c: TowerCrane): number {
+  return c.haakhoogte + c.giekLengte * Math.sin(((c.giekHoek ?? 0) * Math.PI) / 180);
+}
+/** Mobiele torenkraan: heeft een onderwagen met stempels. */
+export const hasOutriggers = (c: Crane): c is Crane & OutriggerBase => !!(c as any).stempelLengte && !!(c as any).stempelBreedte;
 
 /** Huidige radius van de mobiele kraan bij de ingestelde giekhoek. */
 export function mobileRadius(c: MobileCrane): number {
@@ -171,7 +252,7 @@ export function canLift(c: Crane, x: number, y: number, last: number): LiftCheck
   const base = { craneId: c.id, naam: c.naam, radius };
   const t = normalizeTable(c.lasttabel);
   if (!t.length) return { ...base, max: null, ok: false, reden: 'Geen lasttabel ingevoerd.' };
-  if (c.type === 'toren' && radius > c.giekLengte + 1e-9) return { ...base, max: null, ok: false, reden: `Buiten de giek (${fmt(c.giekLengte, 1)} m).` };
+  if (c.type === 'toren' && radius > towerRadius(c) + 1e-9) return { ...base, max: null, ok: false, reden: `Buiten het bereik van de giek (${fmt(towerRadius(c), 1)} m${c.giekHoek ? ` bij ${fmt(c.giekHoek, 0)}°` : ''}).` };
   const max = maxLoadAt(t, radius);
   if (max == null) {
     const lo = t[0].radius, hi = t[t.length - 1].radius;
@@ -199,7 +280,7 @@ export function loadRings(c: Crane): { radius: number; last: number }[] {
 
 /** Zwenkstraal (max. bereik van de giek, voor overdraai/overlap). */
 export function slewRadius(c: Crane): number {
-  if (c.type === 'toren') return c.giekLengte;
+  if (c.type === 'toren') return towerRadius(c);
   return Math.max(reach(c).max, mobileRadius(c));
 }
 
@@ -313,21 +394,22 @@ export function overlaps(cranes: Crane[]): { a: string; b: string; tekst: string
   return out;
 }
 
-/** Stempelplaten van een mobiele kraan (4 vierkanten, RD). */
-export function outriggerPads(c: MobileCrane): number[][][] {
-  const a = (c.rotatie * Math.PI) / 180, co = Math.cos(a), si = Math.sin(a);
+export interface OutriggerBase { x: number; y: number; rotatie?: number; stempelLengte: number; stempelBreedte: number; plaat?: number; onderwagenLengte?: number; onderwagenBreedte?: number }
+/** Stempelplaten van een mobiele (toren)kraan (4 vierkanten, RD). */
+export function outriggerPads(c: OutriggerBase): number[][][] {
+  const a = ((c.rotatie ?? 0) * Math.PI) / 180, co = Math.cos(a), si = Math.sin(a);
   const pt = (u: number, v: number) => [c.x + u * co - v * si, c.y + u * si + v * co];
-  const h = c.plaat / 2;
+  const h = (c.plaat ?? 1) / 2;
   return [[1, 1], [1, -1], [-1, 1], [-1, -1]].map(([su, sv]) => {
     const u = (su * c.stempelLengte) / 2, v = (sv * c.stempelBreedte) / 2;
     return [pt(u - h, v - h), pt(u + h, v - h), pt(u + h, v + h), pt(u - h, v + h), pt(u - h, v - h)];
   });
 }
 /** Onderwagen-rechthoek (RD). */
-export function carrierRect(c: MobileCrane): number[][] {
-  const a = (c.rotatie * Math.PI) / 180, co = Math.cos(a), si = Math.sin(a);
+export function carrierRect(c: OutriggerBase): number[][] {
+  const a = ((c.rotatie ?? 0) * Math.PI) / 180, co = Math.cos(a), si = Math.sin(a);
   const pt = (u: number, v: number) => [c.x + u * co - v * si, c.y + u * si + v * co];
-  const L = c.onderwagenLengte / 2, B = c.onderwagenBreedte / 2;
+  const L = (c.onderwagenLengte ?? 12) / 2, B = (c.onderwagenBreedte ?? 2.75) / 2;
   return [pt(-L, -B), pt(L, -B), pt(L, B), pt(-L, B), pt(-L, -B)];
 }
 /** Voet van de torenkraan (RD), as-uitgelijnd met de giek-standaardrichting 0. */

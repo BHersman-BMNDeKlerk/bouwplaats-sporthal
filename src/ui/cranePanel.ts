@@ -1,7 +1,7 @@
 /** Fase 5: paneel van een kraan (maten, lasttabel, controles, lastcontrole). */
 import { h, parseNum } from './dom';
 import type { ProjectStore } from '../core/project';
-import { maxLoadAt, mobileRadius, mobileTipHeight, parseTable, reach, tableToText, type Crane, type CraneWarning, type LiftCheck } from '../cranes/cranes';
+import { applyConfig, hasOutriggers, towerRadius, maxLoadAt, mobileRadius, mobileTipHeight, parseTable, reach, tableToText, type Crane, type CraneWarning, type LiftCheck } from '../cranes/cranes';
 
 const f = (v: number, d = 2) => v.toLocaleString('nl-NL', { minimumFractionDigits: d, maximumFractionDigits: d });
 
@@ -21,8 +21,17 @@ const TOREN: Field[] = [
   ['giekHoogte', 'Hoogte giekconstructie (m)', 'boven de haakhoogte'],
   ['contragiekLengte', 'Contragieklengte (m)'],
   ['contragiekHoogte', 'Hoogte onderkant contragiek (m)', 'boven maaiveld'],
+  ['giekHoek', 'Giekhoek (°, 0 = horizontaal)'],
   ['voetLengte', 'Voet / fundatie lengte (m)'],
   ['voetBreedte', 'Voet / fundatie breedte (m)'],
+];
+const ONDERWAGEN: Field[] = [
+  ['rotatie', 'Stand onderwagen (°)'],
+  ['stempelLengte', 'Afstempellengte (m)'],
+  ['stempelBreedte', 'Afstempelbreedte (m)'],
+  ['plaat', 'Stempelschot (m, vierkant)'],
+  ['onderwagenLengte', 'Onderwagen lengte (m)'],
+  ['onderwagenBreedte', 'Onderwagen breedte (m)'],
 ];
 const MOBIEL: Field[] = [
   ['giekLengte', 'Gieklengte (m)'],
@@ -47,8 +56,8 @@ export function cranePanel(store: ProjectStore, k: Crane, warnings: CraneWarning
     return i;
   };
   const msg = h('div', { class: 'note', style: { marginLeft: 0 } });
-  const fields: Field[] = [['x', 'X (RD, m)'], ['y', 'Y (RD, m)'], ['richting', 'Giekrichting in tekening (°)'], ...(k.type === 'toren' ? TOREN : MOBIEL), ['ringInterval', 'Ringen elke … m']];
-  const rows = fields.map(([key, label, hint]) => h('div', { class: 'frow' }, label, inp(key, (k as any)[key]), hint ? h('div', { class: 'hint' }, hint) : null));
+  const fields: Field[] = [['x', 'X (RD, m)'], ['y', 'Y (RD, m)'], ['richting', 'Giekrichting in tekening (°)'], ...(k.type === 'toren' ? (hasOutriggers(k) ? [...TOREN.filter((q) => !q[0].startsWith('voet')), ...ONDERWAGEN] : TOREN) : MOBIEL), ['ringInterval', 'Ringen elke … m']];
+  const rows = fields.map(([key, label, hint]) => h('div', { class: 'frow' }, label, inp(key, (k as any)[key] ?? 0), hint ? h('div', { class: 'hint' }, hint) : null));
   const iNaam = h('input', { type: 'text', value: k.naam });
   iNaam.addEventListener('keydown', (ev) => ev.stopPropagation());
   const ta = h('textarea', { rows: 9, style: { width: '100%', fontFamily: 'monospace', fontSize: '12px' } }, tableToText(k.lasttabel)) as HTMLTextAreaElement;
@@ -72,6 +81,8 @@ export function cranePanel(store: ProjectStore, k: Crane, warnings: CraneWarning
       const x = d.kranen.find((q) => q.id === k.id);
       if (!x) return;
       Object.assign(x, vals, { naam: iNaam.value.trim() || x.naam, lasttabel: t.tabel, tabelBron: iBron.value.trim() || undefined });
+      const ai = x.actieveTabel ?? -1;
+      if (x.tabellen?.[ai]) x.tabellen[ai].tabel = t.tabel.map((p) => ({ ...p }));
       x.richting = ((x.richting % 360) + 360) % 360;
     });
   };
@@ -80,18 +91,26 @@ export function cranePanel(store: ProjectStore, k: Crane, warnings: CraneWarning
   const letop = warnings.filter((w) => w.ernst !== 'conflict');
   const r = reach(k);
   const info = k.type === 'toren'
-    ? `Zwenkstraal ${f(k.giekLengte, 1)} m · contragiek ${f(k.contragiekLengte, 1)} m · lasttabel ${f(r.min, 1)}–${f(r.max, 1)} m`
+    ? `Zwenkstraal ${f(towerRadius(k), 1)} m${k.giekHoek ? ` (giek ${f(k.giekHoek, 0)}°)` : ''} · contragiek ${f(k.contragiekLengte, 1)} m · lasttabel ${f(r.min, 1)}–${f(r.max, 1)} m`
     : `Radius bij ${f(k.giekHoek, 0)}°: ${f(mobileRadius(k), 1)} m (max. last ${(() => { const m = maxLoadAt(k.lasttabel, mobileRadius(k)); return m == null ? 'buiten tabel' : f(m) + ' t'; })()}) · giekkop ${f(mobileTipHeight(k), 1)} m · werkgebied tot ${f(r.max, 1)} m`;
 
   const iLast = h('input', { type: 'text', value: String(act.liftLast).replace('.', ','), style: { width: '80px' } });
   iLast.addEventListener('keydown', (ev) => ev.stopPropagation());
   const lr = act.liftResult;
 
+  const cfg = k.tabellen?.length ? h('select', {}, ...k.tabellen.map((t, i) => h('option', { value: String(i), selected: i === (k.actieveTabel ?? 0) }, t.naam))) as HTMLSelectElement : null;
+  if (cfg) cfg.onchange = () => store.change('Kraanconfiguratie gekozen', (d) => { const x = d.kranen.find((q) => q.id === k.id); if (x) applyConfig(x, Number(cfg.value)); });
+  const actief = k.tabellen?.[k.actieveTabel ?? 0];
   return [
+    cfg ? h('fieldset', {}, h('legend', {}, 'Configuratie (lastblad)'), cfg,
+      actief?.opmerking ? h('div', { class: 'note', style: { marginLeft: 0 } }, actief.opmerking) : null,
+      h('div', { class: 'note', style: { marginLeft: 0 } }, 'Kiezen zet de lasttabel, de giekhoek en de afstempelbreedte.')) : null,
+    k.gegevens ? h('details', {}, h('summary', { style: { cursor: 'pointer', fontSize: '13px' } }, 'Gegevens en aannames'), h('div', { class: 'note', style: { marginLeft: 0 } }, k.gegevens)) : null,
     conflicts.length ? h('div', { class: 'note warn', style: { marginLeft: 0, background: '#fdecea', color: '#b71c1c' } }, h('b', {}, '⚠ Conflict'), h('ul', { style: { margin: '4px 0 0', paddingLeft: '18px' } }, ...conflicts.map((w) => h('li', {}, w.tekst)))) : null,
     letop.length || overlap.length ? h('div', { class: 'note warn', style: { marginLeft: 0 } }, h('b', {}, 'Let op'), h('ul', { style: { margin: '4px 0 0', paddingLeft: '18px' } }, ...letop.map((w) => h('li', {}, w.tekst)), ...overlap.map((t) => h('li', {}, t)))) : null,
     !warnings.length && !overlap.length ? h('div', { class: 'note', style: { marginLeft: 0, color: '#1b5e20' } }, '✔ Geen overdraai of hoogteconflicten gevonden') : null,
     h('div', { class: 'note', style: { marginLeft: 0 } }, info),
+    k.type === 'toren' && r.max < towerRadius(k) - 0.01 ? h('div', { class: 'note warn', style: { marginLeft: 0 } }, `⚠ De lasttabel loopt tot ${f(r.max, 1)} m, de giek reikt tot ${f(towerRadius(k), 1)} m. Daarbuiten is het altijd NIET OK – vul de tabel aan vanuit het lastblad.`) : null,
     h('fieldset', {}, h('legend', {}, 'Kan last X op positie Y?'),
       h('div', { class: 'frow' }, 'Last (t, incl. hijsmiddelen)', iLast),
       h('div', { class: 'btnrow' }, h('button', { class: 'primary', onclick: () => { const n = parseNum(iLast.value); if (n != null && !Number.isNaN(n) && n > 0) act.startLift(n); } }, '⌖ Klik een punt op de kaart')),

@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import type { LocalFrame } from '../core/coords';
 import type { CanvasOverlay, DrawContext } from './terrainLayer';
-import { carrierRect, loadRings, mobileRadius, mobileTipHeight, outriggerPads, pointInRing, reach, slewRadius, towerBase, type Crane, type LiftCheck } from '../cranes/cranes';
+import { carrierRect, hasOutriggers, towerRadius, towerTipHeight, loadRings, mobileRadius, mobileTipHeight, outriggerPads, pointInRing, reach, slewRadius, towerBase, type Crane, type LiftCheck } from '../cranes/cranes';
 import { labelSprite } from './userLayer';
 
 export const KRAAN_KLEUR = '#f57c00';
@@ -15,13 +15,13 @@ function circle(c: DrawContext, x: number, y: number, r: number) {
   c.ctx.arc(c.X(x), c.Y(y), r * c.ppm, 0, Math.PI * 2);
 }
 
-export function cranesOverlay(getCranes: () => Crane[], selectedId: () => string | null, marker: () => LiftMarker | null, warn: () => Set<string>): CanvasOverlay {
+export function cranesOverlay(getCranes: () => Crane[], selectedId: () => string | null, marker: () => LiftMarker | null, warn: () => Set<string>, hidden: () => string | null = () => null): CanvasOverlay {
   return (c, L) => {
     if (!L.kranen) return;
     const { ctx, ppm } = c;
     const lw = (m: number, min = 1) => Math.max(min, m * ppm);
     for (const k of getCranes()) {
-      if (!k.zichtbaar) continue;
+      if (!k.zichtbaar || hidden() === k.id) continue;
       const sel = selectedId() === k.id;
       const bad = warn().has(k.id);
       const R = slewRadius(k);
@@ -47,12 +47,21 @@ export function cranesOverlay(getCranes: () => Crane[], selectedId: () => string
         // contragiek
         ctx.beginPath(); circle(c, k.x, k.y, k.contragiekLengte);
         ctx.strokeStyle = '#6d4c41'; ctx.lineWidth = lw(0.25, 1.5); ctx.setLineDash([1.2 * ppm, 0.6 * ppm]); ctx.stroke(); ctx.setLineDash([]);
-        // voet
-        ctx.beginPath(); c.ring(towerBase(k)); ctx.fillStyle = '#9e9e9ecc'; ctx.fill(); ctx.strokeStyle = '#424242'; ctx.lineWidth = lw(0.08); ctx.stroke();
+        if (hasOutriggers(k)) {
+          const pads = outriggerPads(k);
+          ctx.beginPath();
+          for (const p of pads) { const m = [(p[0][0] + p[2][0]) / 2, (p[0][1] + p[2][1]) / 2]; ctx.moveTo(c.X(k.x), c.Y(k.y)); ctx.lineTo(c.X(m[0]), c.Y(m[1])); }
+          ctx.strokeStyle = '#424242'; ctx.lineWidth = lw(0.25, 2); ctx.stroke();
+          ctx.beginPath(); c.ring(carrierRect(k)); ctx.fillStyle = '#ffb300dd'; ctx.fill(); ctx.strokeStyle = '#333'; ctx.lineWidth = lw(0.06); ctx.stroke();
+          for (const p of pads) { ctx.beginPath(); c.ring(p); ctx.fillStyle = '#5d4037'; ctx.fill(); }
+        } else {
+          // voet
+          ctx.beginPath(); c.ring(towerBase(k)); ctx.fillStyle = '#9e9e9ecc'; ctx.fill(); ctx.strokeStyle = '#424242'; ctx.lineWidth = lw(0.08); ctx.stroke();
+        }
         // giek + contragiek in de huidige stand
         ctx.beginPath();
         ctx.moveTo(c.X(k.x - k.contragiekLengte * Math.cos(dir)), c.Y(k.y - k.contragiekLengte * Math.sin(dir)));
-        ctx.lineTo(c.X(k.x + k.giekLengte * Math.cos(dir)), c.Y(k.y + k.giekLengte * Math.sin(dir)));
+        ctx.lineTo(c.X(k.x + towerRadius(k) * Math.cos(dir)), c.Y(k.y + towerRadius(k) * Math.sin(dir)));
         ctx.strokeStyle = '#e6a100'; ctx.lineWidth = lw(0.9, 3); ctx.stroke();
         ctx.beginPath(); ctx.rect(c.X(k.x) - 0.8 * ppm, c.Y(k.y) - 0.8 * ppm, 1.6 * ppm, 1.6 * ppm); ctx.fillStyle = '#ffb300'; ctx.fill(); ctx.strokeStyle = '#333'; ctx.stroke();
       } else {
@@ -92,7 +101,8 @@ export function hitCrane(cranes: Crane[], x: number, y: number, tol: number): Cr
     if (!k.zichtbaar) continue;
     if (Math.hypot(x - k.x, y - k.y) < Math.max(1.5, tol)) return k;
     if (k.type === 'toren' && pointInRing(x, y, towerBase(k))) return k;
-    if (k.type === 'mobiel' && (pointInRing(x, y, carrierRect(k)) || outriggerPads(k).some((p) => pointInRing(x, y, p)))) return k;
+    if (hasOutriggers(k) && (pointInRing(x, y, carrierRect(k)) || pointInRing(x, y, carrierRect({ ...k, onderwagenLengte: k.stempelLengte + (k.plaat ?? 1), onderwagenBreedte: k.stempelBreedte + (k.plaat ?? 1) })))) return k;
+    if (k.type === 'mobiel' && (pointInRing(x, y, carrierRect(k)) || pointInRing(x, y, carrierRect({ ...k, onderwagenLengte: k.stempelLengte + k.plaat, onderwagenBreedte: k.stempelBreedte + k.plaat })))) return k;
   }
   return null;
 }
@@ -147,6 +157,19 @@ export class CraneLayer {
     }
   }
 
+  private outriggers3D(k: Crane, g0: number) {
+    if (!hasOutriggers(k)) return;
+    const rot = ((k.rotatie ?? 0) * Math.PI) / 180, plaat = k.plaat ?? 1;
+    const cr = carrierRect(k);
+    this.group.add(this.beam(cr[0][0] + (cr[3][0] - cr[0][0]) / 2, cr[0][1] + (cr[3][1] - cr[0][1]) / 2, g0 + 0.6, rot, 0, k.onderwagenLengte ?? 12, k.onderwagenBreedte ?? 2.75, 2.2, '#ffb300', k.id));
+    for (const p of outriggerPads(k)) {
+      const cx = (p[0][0] + p[2][0]) / 2, cy = (p[0][1] + p[2][1]) / 2;
+      this.group.add(this.beam(cx - (plaat / 2) * Math.cos(rot), cy - (plaat / 2) * Math.sin(rot), g0 + 0.1, rot, 0, plaat, plaat, 0.2, '#5d4037', k.id));
+      const len = Math.hypot(cx - k.x, cy - k.y);
+      this.group.add(this.beam(k.x, k.y, g0 + 0.9, Math.atan2(cy - k.y, cx - k.x), 0, len, 0.4, 0.4, '#616161', k.id));
+    }
+  }
+
   apply(cranes: Crane[], visible: boolean, selectedId: string | null, marker: LiftMarker | null = null) {
     this.clear();
     if (!visible) return;
@@ -176,36 +199,30 @@ export class CraneLayer {
       const sel = selectedId === k.id;
       if (k.type === 'toren') {
         const top = g0 + k.haakhoogte + k.giekHoogte;
-        // voet en mast
-        this.group.add(this.beam(k.x - k.voetLengte / 2, k.y, g0 - 0.2, 0, 0, k.voetLengte, k.voetBreedte, 0.6, '#9e9e9e', k.id));
+        // voet of onderwagen met stempels, en mast
+        if (hasOutriggers(k)) this.outriggers3D(k, g0);
+        else this.group.add(this.beam(k.x - k.voetLengte / 2, k.y, g0 - 0.2, 0, 0, k.voetLengte, k.voetBreedte, 0.6, '#9e9e9e', k.id));
         const mast = this.beam(k.x, k.y, g0, 0, Math.PI / 2, top - g0 + 1.5, 1.6, 1.6, '#ffb300', k.id);
         this.group.add(mast);
         // giek en contragiek
-        this.group.add(this.beam(k.x, k.y, g0 + k.haakhoogte + k.giekHoogte / 2, head, 0, k.giekLengte, 1.2, k.giekHoogte * 0.6, '#ffc107', k.id));
+        const hk = ((k.giekHoek ?? 0) * Math.PI) / 180;
+        this.group.add(this.beam(k.x, k.y, g0 + k.haakhoogte + k.giekHoogte / 2, head, hk, k.giekLengte, 1.2, k.giekHoogte * 0.6, '#ffc107', k.id));
         this.group.add(this.beam(k.x, k.y, g0 + k.contragiekHoogte + 0.5, head + Math.PI, 0, k.contragiekLengte, 2.0, 1.0, '#ffc107', k.id));
         this.group.add(this.beam(k.x - (k.contragiekLengte - 2.5) * Math.cos(head), k.y - (k.contragiekLengte - 2.5) * Math.sin(head), k.contragiekHoogte + g0 - 1.5, head + Math.PI, 0, 2.5, 2.4, 2.2, '#757575', k.id));
         // haak op 2/3 van de giek
-        const hr = k.giekLengte * 0.66;
+        const hr = towerRadius(k) * (hk ? 1 : 0.66), hz = g0 + (hk ? towerTipHeight(k) : k.haakhoogte);
         const hx = k.x + hr * Math.cos(head), hy = k.y + hr * Math.sin(head);
-        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([this.v(hx, hy, g0 + k.haakhoogte), this.v(hx, hy, g0 + k.haakhoogte - 8)]), new THREE.LineBasicMaterial({ color: '#222' }));
+        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([this.v(hx, hy, hz), this.v(hx, hy, hz - 8)]), new THREE.LineBasicMaterial({ color: '#222' }));
         line.raycast = () => {};
         this.group.add(line);
-        this.group.add(this.ring(k.x, k.y, g0 + k.haakhoogte, k.giekLengte, sel ? '#d84315' : KRAAN_KLEUR));
+        this.group.add(this.ring(k.x, k.y, g0 + k.haakhoogte, towerRadius(k), sel ? '#d84315' : KRAAN_KLEUR));
         this.group.add(this.ring(k.x, k.y, g0 + k.contragiekHoogte, k.contragiekLengte, '#6d4c41', true));
         this.loadRings3D(k, g0 + k.haakhoogte, true);
         const lab = labelSprite(`${k.naam} · haak ${fmt(k.haakhoogte)} m`, '#5d2a00', 1.4);
         lab.position.copy(this.v(k.x, k.y, top + 3));
         this.group.add(lab);
       } else {
-        const rot = (k.rotatie * Math.PI) / 180;
-        const cr = carrierRect(k);
-        this.group.add(this.beam(cr[0][0] + (cr[3][0] - cr[0][0]) / 2, cr[0][1] + (cr[3][1] - cr[0][1]) / 2, g0 + 0.6, rot, 0, k.onderwagenLengte, k.onderwagenBreedte, 2.2, '#ffb300', k.id));
-        for (const p of outriggerPads(k)) {
-          const cx = (p[0][0] + p[2][0]) / 2, cy = (p[0][1] + p[2][1]) / 2;
-          this.group.add(this.beam(cx - k.plaat / 2 * Math.cos(rot), cy - k.plaat / 2 * Math.sin(rot), g0 + 0.1, rot, 0, k.plaat, k.plaat, 0.2, '#5d4037', k.id));
-          const len = Math.hypot(cx - k.x, cy - k.y);
-          this.group.add(this.beam(k.x, k.y, g0 + 0.9, Math.atan2(cy - k.y, cx - k.x), 0, len, 0.4, 0.4, '#616161', k.id));
-        }
+        this.outriggers3D(k, g0);
         // bovenwagen
         this.group.add(this.beam(k.x - 3 * Math.cos(head), k.y - 3 * Math.sin(head), g0 + 2.6, head, 0, 5, 2.6, 1.6, '#ffa000', k.id));
         const px = k.x + k.scharnierOffset * Math.cos(head), py = k.y + k.scharnierOffset * Math.sin(head);
