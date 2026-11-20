@@ -70,6 +70,21 @@ export function helpContent(): Node {
   rechts (standaard 2 hekken = 7,00 m) en verschuif je met het oranje blokje.</p>
   <p><b>Bewerken:</b> selecteer een object en sleep de blauwe bolletjes (hoekpunten), een wit tussenpunt (nieuw hoekpunt) of het
   object zelf (verplaatsen). Dubbelklik op een hoekpunt verwijdert het. Alles is ongedaan te maken met <kbd>Ctrl</kbd>+<kbd>Z</kbd>.</p>
+  <h3>Bouwplaatselementen (menu ＋ Element)</h3>
+  <p>Kies een element (keet, toilet, container 20'/40', afvalcontainer, opslagvlak, laad-/losvak, parkeervak, steiger,
+  bouwlift, bouwstroomkast, waterpunt, bord, verkeersregelaar, blok, auto, bestelbus) en klik op de kaart om het te plaatsen
+  (<kbd>R</kbd> = draaien vóór plaatsen, <kbd>Esc</kbd> = annuleren). Een steiger springt naar de dichtstbijzijnde gevel.</p>
+  <p><b>Bewerken:</b> sleep het element om te verplaatsen, de blauwe blokjes om lengte/breedte te wijzigen en de oranje bol om te
+  draaien (stap 5°/15°/90°, <kbd>Shift</kbd> = vrij). Sneltoetsen: <kbd>R</kbd>/<kbd>Shift</kbd>+<kbd>R</kbd> draaien,
+  <kbd>Ctrl</kbd>+<kbd>D</kbd> dupliceren, <kbd>Delete</kbd> verwijderen, pijltjes 0,1 m schuiven (met <kbd>Shift</kbd> 1 m).
+  In het paneel rechts: naam, label, soort, laag, kleur, maten, stapelen (keten en containers).</p>
+  <p><b>Botsingscontrole:</b> een element wordt rood als het een ander element, een gebouw of het nieuwe pand overlapt, over de
+  perceelgrens steekt of buiten het eigen perceel valt – tenzij het in een <b>vergunde zone</b> ligt (menu Tekenen). De ingemeten
+  grens heeft voorrang op de BRK-grens. Vlakken (opslag, vakken) botsen niet met elementen erop; geparkeerde voertuigen alleen met
+  bouwplaatselementen.</p>
+  <p><b>Parkeervakken bezet</b> (menu ＋ Element): teken een zone; in alle BGT-parkeervakken erin komt een auto (worst case voor
+  draaibewegingen). Wissen via het lagenpaneel.</p>
+  <p><b>Routes en vlakken</b> (menu Tekenen): looproute, vluchtroute (stippellijn met pijlen), vrij vlak en vrije lijn met label.</p>
   <h3>Meten en maatlijnen</h3>
   <p><b>📏 Meten</b> (<kbd>M</kbd>): klik punten op de kaart of op gebouwen. Per stuk zie je de horizontale afstand, het
   hoogteverschil (ΔH) en de 3D-afstand, plus het totaal. Punten springen naar hoeken van gebouwen, het nieuwe pand,

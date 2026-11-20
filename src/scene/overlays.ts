@@ -13,6 +13,7 @@ import { themaStyle, type KlicData, type KlicLine } from '../data/klic';
 import type { CanvasOverlay, DrawContext } from './terrainLayer';
 import { gatePanels, panels } from '../core/polyline';
 import { offsetSegment } from '../core/measure';
+import { ELEMENTS, footprint, type Element } from '../core/elements';
 
 const inView = (c: DrawContext, x: number, y: number, m = 5) => x > c.bb.xmin - m && x < c.bb.xmax + m && y > c.bb.ymin - m && y < c.bb.ymax + m;
 const fmt = (v: number, d = 2) => v.toLocaleString('nl-NL', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -346,6 +347,11 @@ export const MANUAL_STYLE: Record<ManualObject['soort'], { label: string; kleur:
   hekwerk: { label: 'Bouwhekken', kleur: '#263238' },
   nietBerijdbaar: { label: 'Niet berijdbaar', kleur: '#d32f2f' },
   maatlijn: { label: 'Maatlijn', kleur: '#0d47a1' },
+  looproute: { label: 'Looproute', kleur: '#2e7d32' },
+  vluchtroute: { label: 'Vluchtroute', kleur: '#00a152' },
+  vrijvlak: { label: 'Vrij vlak', kleur: '#7e57c2' },
+  vrijelijn: { label: 'Vrije lijn', kleur: '#5d4037' },
+  vergundeZone: { label: 'Vergunde zone', kleur: '#6a1b9a' },
 };
 
 let hatch: HTMLCanvasElement | null = null;
@@ -370,8 +376,11 @@ export function manualOverlay(getP: () => ProjectData, selectedId: () => string 
     const { ctx, ppm } = c;
     for (const o of p.handmatig) {
       if (!L.handmatig[o.soort] || o.id === hiddenId()) continue;
-      const st = MANUAL_STYLE[o.soort];
+      const st0 = MANUAL_STYLE[o.soort];
+      const st = { ...st0, kleur: o.kleur ?? st0.kleur };
       const sel = selectedId() === o.id;
+      const dash = o.soort === 'doorrijhoogte' ? [0.8 * ppm, 0.4 * ppm] : o.soort === 'looproute' ? [0.6 * ppm, 0.4 * ppm]
+        : o.soort === 'vluchtroute' ? [1.0 * ppm, 0.5 * ppm] : o.soort === 'vergundeZone' ? [1.5 * ppm, 0.6 * ppm] : [];
       const pts = o.coords;
       if (o.geom === 'vlak' && pts.length >= 3) {
         ctx.beginPath();
@@ -382,12 +391,12 @@ export function manualOverlay(getP: () => ProjectData, selectedId: () => string 
           ctx.fillStyle = hatchPattern(ctx, st.kleur);
           ctx.fill();
         } else {
-          ctx.fillStyle = st.kleur + '22';
+          ctx.fillStyle = st.kleur + (o.soort === 'vergundeZone' ? '14' : '30');
           ctx.fill();
         }
         ctx.strokeStyle = sel ? '#ffeb3b' : st.kleur;
-        ctx.lineWidth = Math.max(2, 0.2 * ppm);
-        ctx.setLineDash(o.soort === 'doorrijhoogte' ? [0.8 * ppm, 0.4 * ppm] : []);
+        ctx.lineWidth = Math.max(2, (o.soort === 'vergundeZone' ? 0.3 : 0.2) * ppm);
+        ctx.setLineDash(dash);
         ctx.stroke();
         ctx.setLineDash([]);
       } else if (o.soort === 'maatlijn') {
@@ -399,10 +408,28 @@ export function manualOverlay(getP: () => ProjectData, selectedId: () => string 
         ctx.beginPath();
         c.path(pts);
         ctx.strokeStyle = sel ? '#ffeb3b' : st.kleur;
-        ctx.lineWidth = Math.max(2, (o.soort === 'hekwerk' ? 0.12 : 0.2) * ppm);
-        ctx.setLineDash(o.soort === 'doorrijhoogte' ? [0.8 * ppm, 0.4 * ppm] : []);
+        ctx.lineWidth = Math.max(2, (o.soort === 'vluchtroute' || o.soort === 'looproute' ? 0.3 : 0.2) * ppm);
+        ctx.setLineDash(dash);
         ctx.stroke();
         ctx.setLineDash([]);
+        // pijlen in de looprichting
+        if (o.soort === 'vluchtroute' || o.soort === 'looproute')
+          for (let k = 0; k < pts.length - 1; k++) {
+            const a = pts[k], b = pts[k + 1];
+            const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+            if (len < 2) continue;
+            const ux = (b[0] - a[0]) / len, uy = (b[1] - a[1]) / len;
+            for (let t = 3; t < len; t += 8) {
+              const px = a[0] + ux * t, py = a[1] + uy * t, s2 = 0.7;
+              ctx.beginPath();
+              ctx.moveTo(c.X(px + ux * s2), c.Y(py + uy * s2));
+              ctx.lineTo(c.X(px - ux * s2 - uy * s2 * 0.7), c.Y(py - uy * s2 + ux * s2 * 0.7));
+              ctx.lineTo(c.X(px - ux * s2 + uy * s2 * 0.7), c.Y(py - uy * s2 - ux * s2 * 0.7));
+              ctx.closePath();
+              ctx.fillStyle = sel ? '#ffeb3b' : st.kleur;
+              ctx.fill();
+            }
+          }
       } else if (o.geom === 'punten') {
         for (const q of pts) {
           ctx.beginPath();
@@ -413,7 +440,7 @@ export function manualOverlay(getP: () => ProjectData, selectedId: () => string 
       }
       // label
       const cx = pts.reduce((s, q) => s + q[0], 0) / pts.length, cy = pts.reduce((s, q) => s + q[1], 0) / pts.length;
-      let t = o.naam;
+      let t = o.naam || (o.soort === 'vluchtroute' ? 'Vluchtroute' : o.soort === 'vergundeZone' ? 'Vergunde zone' : '');
       if (o.soort === 'doorrijhoogte' && o.vrijeHoogte != null) t = `${o.naam} – vrij ${fmt(o.vrijeHoogte)} m`;
       if (t) c.label(t, cx, cy, 0, 0.9, st.kleur, '#ffffffee', true);
     }
@@ -507,4 +534,51 @@ export function hitManual(p: ProjectData, L: LayerState, x: number, y: number, t
     if (o.geom === 'punten' && pts.some((q) => Math.hypot(q[0] - x, q[1] - y) < tol)) return o;
   }
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Bouwplaatselementen (2D-footprint en label)
+// ---------------------------------------------------------------------------
+
+export function elementsOverlay(
+  getEls: () => Element[], visible: (e: Element) => boolean, conflicts: () => Set<string>,
+  selectedId: () => string | null, hiddenId: () => string | null, showConflicts: () => boolean,
+): CanvasOverlay {
+  return (c) => {
+    const { ctx, ppm } = c;
+    const conf = conflicts();
+    // vlakke elementen eerst, dan de rest
+    const els = [...getEls()].sort((a, b) => Number(!ELEMENTS[a.type].vlak) - Number(!ELEMENTS[b.type].vlak));
+    for (const e of els) {
+      if (!visible(e) || e.id === hiddenId()) continue;
+      if (!inView(c, e.x, e.y, Math.max(e.lengte, e.breedte))) continue;
+      const fp = footprint(e);
+      const red = showConflicts() && conf.has(e.id);
+      const vlak = !!ELEMENTS[e.type].vlak;
+      ctx.beginPath();
+      c.ring([...fp, fp[0]]);
+      ctx.fillStyle = (red ? '#e53935' : e.kleur) + (vlak ? '55' : 'cc');
+      ctx.fill();
+      ctx.strokeStyle = selectedId() === e.id ? '#fdd835' : red ? '#b71c1c' : '#263238';
+      ctx.lineWidth = Math.max(1.5, (red || selectedId() === e.id ? 0.18 : 0.08) * ppm);
+      ctx.setLineDash(vlak ? [0.5 * ppm, 0.3 * ppm] : []);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      if (e.type === 'laadlosvak' || e.type === 'parkeervak') {
+        // diagonaal kruis
+        ctx.beginPath();
+        ctx.moveTo(c.X(fp[0][0]), c.Y(fp[0][1])); ctx.lineTo(c.X(fp[2][0]), c.Y(fp[2][1]));
+        ctx.moveTo(c.X(fp[1][0]), c.Y(fp[1][1])); ctx.lineTo(c.X(fp[3][0]), c.Y(fp[3][1]));
+        ctx.lineWidth = Math.max(1, 0.05 * ppm);
+        ctx.stroke();
+      }
+      const small = Math.min(e.lengte, e.breedte) < 1.5;
+      if (!small || e.lengte >= 3) {
+        const naam = e.label || e.naam;
+        const sz = Math.min(0.9, Math.max(0.4, Math.min(e.lengte, e.breedte) * 0.3));
+        const rot = e.lengte >= e.breedte ? e.rotatie : e.rotatie + 90;
+        c.label(naam + (e.stapel && e.stapel > 1 ? ` (${e.stapel}×)` : ''), e.x, e.y, rot, sz, red ? '#b71c1c' : '#1a1a1a', '#ffffffcc', true);
+      }
+    }
+  };
 }

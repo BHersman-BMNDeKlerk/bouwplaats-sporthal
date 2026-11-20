@@ -20,6 +20,7 @@ import { MANUAL_STYLE, soortVan } from '../scene/overlays';
 import { polylineLength, activeBoundary, type ActiveBoundary } from '../core/boundary';
 import { ringArea } from '../data/geom';
 import { measureTotals, type MeasurePoint } from '../core/measure';
+import { ELEMENTS, type Conflict, type Element } from '../core/elements';
 import { BOUWHEK, clampGate, panels, totalLength, wholePanels, type Pt } from '../core/polyline';
 
 export class InfoPanel {
@@ -357,6 +358,8 @@ export class InfoPanel {
     const iH = h('input', { type: 'text', inputmode: 'decimal', value: String((o.soort === 'doorrijhoogte' ? o.vrijeHoogte : o.hoogte) ?? '').replace('.', ',') });
     const iNote = h('input', { type: 'text', value: o.opmerking ?? '', placeholder: 'opmerking' });
     const iOff = h('input', { type: 'text', inputmode: 'decimal', value: String(o.offset ?? 0).replace('.', ',') });
+    const iKleur = h('input', { type: 'color', value: o.kleur ?? st.kleur, style: { width: '60px', padding: 0 } });
+    const hasKleur = o.soort === 'vrijvlak' || o.soort === 'vrijelijn';
     const save = () => {
       const v = parseNum(iH.value);
       if ((o.soort === 'doorrijhoogte' || needsH) && (v == null || Number.isNaN(v) || v <= 0)) { alert('Vul een geldige hoogte in (m).'); return; }
@@ -365,6 +368,7 @@ export class InfoPanel {
         if (!x) return;
         x.naam = iNaam.value.trim();
         x.opmerking = iNote.value.trim() || undefined;
+        if (hasKleur) x.kleur = iKleur.value;
         if (o.soort === 'maatlijn') { const off = parseNum(iOff.value); if (off != null && !Number.isNaN(off)) x.offset = off; }
         if (o.soort === 'doorrijhoogte') x.vrijeHoogte = v!;
         else if (needsH) x.hoogte = v!;
@@ -376,6 +380,7 @@ export class InfoPanel {
       h('fieldset', {},
         h('legend', {}, 'Eigenschappen'),
         h('div', { class: 'frow' }, 'Naam', iNaam),
+        hasKleur ? h('div', { class: 'frow' }, 'Kleur', iKleur) : null,
         o.soort === 'maatlijn' ? h('div', { class: 'frow' }, 'Afstand maatlijn tot punten (m)', iOff) : null,
         o.soort === 'maatlijn' ? h('div', { class: 'hint', style: { fontSize: '11px', color: '#777' } }, 'Positief = links van de tekenrichting, negatief = rechts.') : null,
         o.soort === 'doorrijhoogte' || o.soort === 'paaltjes' ? h('div', { class: 'frow' }, o.soort === 'doorrijhoogte' ? 'Vrije hoogte boven maaiveld (m)' : 'Hoogte (m)', iH) : null,
@@ -430,6 +435,59 @@ export class InfoPanel {
       gates.length ? h('table', {}, ...gateRows) : h('div', { class: 'note', style: { marginLeft: 0 } }, 'Nog geen poort.'),
       h('div', { class: 'btnrow' }, h('button', { onclick: addGate }, '＋ Poort toevoegen')),
       h('div', { class: 'note', style: { marginLeft: 0 } }, 'Sleep het oranje blokje boven de poort om hem langs het hek te verschuiven (per heel hek).'),
+    );
+  }
+
+  // ------------------------------------------------------------------ bouwplaatselement
+  showElement(e: Element, conflicts: Conflict[], lagen: string[], act: { duplicate: () => void; remove: () => void; alignFacade?: () => void; rotStep: number; setRotStep: (n: number) => void }) {
+    const spec = ELEMENTS[e.type];
+    const fmt = (v: number, d = 2) => String(Math.round(v * 10 ** d) / 10 ** d).replace('.', ',');
+    const inp = (v: string, w = '100%') => { const i = h('input', { type: 'text', value: v, style: { width: w } }); i.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') save(); ev.stopPropagation(); }); return i; };
+    const iNaam = inp(e.naam), iLabel = inp(e.label ?? ''), iLaag = inp(e.laag);
+    iLaag.setAttribute('list', 'lagenlijst');
+    const dl = h('datalist', { id: 'lagenlijst' }, ...lagen.map((l) => h('option', { value: l })));
+    const iL = inp(fmt(e.lengte)), iB = inp(fmt(e.breedte)), iH = inp(fmt(e.hoogte)), iR = inp(fmt(e.rotatie, 1));
+    const iKleur = h('input', { type: 'color', value: e.kleur, style: { width: '60px', padding: 0 } });
+    const iStapel = spec.stapelbaar ? h('select', {}, ...[1, 2, 3].map((n) => h('option', { value: String(n), selected: n === (e.stapel ?? 1) }, `${n} hoog`))) : null;
+    const iSoort = spec.soorten ? h('select', {}, ...spec.soorten.map((x) => h('option', { value: x, selected: x === e.soort }, x))) : null;
+    const msg = h('div', { class: 'note', style: { marginLeft: 0 } });
+    function num(i: HTMLInputElement) { return parseNum(i.value); }
+    const save = () => {
+      const L = num(iL), B = num(iB), H = num(iH), R = num(iR);
+      if ([L, B, H, R].some((v) => v == null || Number.isNaN(v)) || L! <= 0 || B! <= 0 || H! < 0) { msg.textContent = 'Ongeldige maat.'; return; }
+      this.store.change(`${spec.label} aangepast`, (d) => {
+        const x = d.elementen.find((q) => q.id === e.id);
+        if (!x) return;
+        Object.assign(x, { naam: iNaam.value.trim() || spec.label, label: iLabel.value.trim() || undefined, laag: iLaag.value.trim() || spec.categorie, kleur: iKleur.value, lengte: L, breedte: B, hoogte: H, rotatie: ((R! % 360) + 360) % 360 });
+        if (iStapel) x.stapel = Number(iStapel.value);
+        if (iSoort) x.soort = iSoort.value;
+      });
+    };
+    const seg = h('div', { class: 'seg', style: { marginLeft: 0 } }, ...[5, 15, 90].map((n) => h('button', { class: act.rotStep === n ? 'on' : '', onclick: () => act.setRotStep(n) }, `${n}°`)));
+    const kinds: Record<string, string> = { element: 'overlapt met', gebouw: 'overlapt met gebouw', 'nieuw pand': 'overlapt met', perceelgrens: 'over de perceelgrens', 'buiten kavel': 'buiten' };
+    this.open(e.naam || spec.label, `${spec.label} · laag ${e.laag}`,
+      conflicts.length ? h('div', { class: 'note warn', style: { marginLeft: 0, background: '#fdecea', color: '#b71c1c' } }, h('b', {}, '⚠ Botsing: '),
+        h('ul', { style: { margin: '4px 0 0', paddingLeft: '18px' } }, ...conflicts.map((c) => h('li', {}, `${kinds[c.soort]} ${c.met}`)))) : h('div', { class: 'note', style: { marginLeft: 0, color: '#1b5e20' } }, '✔ Geen botsingen'),
+      h('fieldset', {}, h('legend', {}, 'Element'),
+        h('div', { class: 'frow' }, 'Naam', iNaam),
+        h('div', { class: 'frow' }, e.type === 'bord' ? 'Tekst op bord' : 'Label', iLabel),
+        iSoort ? h('div', { class: 'frow' }, 'Soort', iSoort) : null,
+        h('div', { class: 'frow' }, 'Laag', iLaag), dl,
+        h('div', { class: 'frow' }, 'Kleur', iKleur)),
+      h('fieldset', {}, h('legend', {}, 'Maten (m) en stand'),
+        h('div', { class: 'frow' }, 'Lengte', iL),
+        h('div', { class: 'frow' }, 'Breedte', iB),
+        h('div', { class: 'frow' }, spec.stapelbaar ? 'Hoogte per unit' : 'Hoogte', iH),
+        iStapel ? h('div', { class: 'frow' }, 'Stapelen', iStapel) : null,
+        h('div', { class: 'frow' }, 'Rotatie (° linksom)', iR),
+        h('div', { class: 'note', style: { marginLeft: 0 } }, 'Draaistap bij slepen en R-toets (Shift = vrij):'), seg),
+      h('div', { class: 'btnrow' },
+        h('button', { class: 'primary', onclick: save }, 'Toepassen'),
+        h('button', { title: 'Ctrl+D', onclick: act.duplicate }, 'Dupliceren'),
+        act.alignFacade ? h('button', { onclick: act.alignFacade }, 'Uitlijnen op gevel') : null,
+        h('button', { title: 'Delete', onclick: () => { if (confirm(`${e.naam} verwijderen?`)) act.remove(); } }, 'Verwijderen')),
+      msg,
+      h('div', { class: 'note', style: { marginLeft: 0 } }, 'Sleep het element om het te verplaatsen, de blauwe blokjes om lengte en breedte te wijzigen (de overkant blijft staan) en de oranje bol om te draaien. Sneltoetsen: R / Shift+R draaien, Ctrl+D dupliceren, Delete verwijderen, pijltjes 0,1 m schuiven.'),
     );
   }
 

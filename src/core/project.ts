@@ -9,6 +9,7 @@ import type { HeightOverride } from '../data/heights';
 import type { Placement } from '../data/ifcGeom';
 import type { KlicData } from '../data/klic';
 import type { Gate } from './polyline';
+import type { Element } from './elements';
 
 export interface TreeOverride {
   hoogte?: number;
@@ -68,7 +69,7 @@ export interface DxfRef {
   zichtbaar: boolean;
 }
 
-export type ManualKind = 'doorrijhoogte' | 'paaltjes' | 'hekwerk' | 'nietBerijdbaar' | 'maatlijn';
+export type ManualKind = 'doorrijhoogte' | 'paaltjes' | 'hekwerk' | 'nietBerijdbaar' | 'maatlijn' | 'looproute' | 'vluchtroute' | 'vrijvlak' | 'vrijelijn' | 'vergundeZone';
 
 /** Handmatig getekend obstakel (RD-coördinaten). */
 export interface ManualObject {
@@ -81,6 +82,8 @@ export interface ManualObject {
   vrijeHoogte?: number;
   /** Paaltjes/hekwerk: hoogte boven maaiveld (m). */
   hoogte?: number;
+  /** Vrij vlak / vrije lijn: eigen kleur. */
+  kleur?: string;
   /** Maatlijn: afstand van de maatlijn tot de gemeten punten (m, + = links van de tekenrichting). */
   offset?: number;
   /** Hekwerk: poorten (reeksen hele bouwhekken). */
@@ -117,7 +120,7 @@ export interface ProjectData {
   /** Laagzichtbaarheid en camera (geen onderdeel van undo). */
   weergave?: { lagen?: Record<string, boolean | number | string>; camera?: number[] };
   /** Gereserveerd voor latere fases. */
-  elementen?: unknown[];
+  elementen: Element[];
   routes?: unknown[];
   kranen?: unknown[];
 }
@@ -162,7 +165,7 @@ export function parseProject(text: string): ProjectData {
   p.handmatig = Array.isArray(d.handmatig) ? d.handmatig : [];
   p.bijlagen = d.bijlagen && typeof d.bijlagen === 'object' ? d.bijlagen : {};
   for (const r of [...p.klic, ...p.onderleggers]) if (!p.bijlagen[r.id]) throw new Error(`Projectbestand onvolledig: gegevens van "${'meldnummer' in r ? r.meldnummer : r.naam}" ontbreken.`);
-  p.elementen = d.elementen ?? [];
+  p.elementen = Array.isArray(d.elementen) ? d.elementen.filter((e: any) => e && e.type && Number.isFinite(e.x) && Number.isFinite(e.y)) : [];
   p.routes = d.routes ?? [];
   p.kranen = d.kranen ?? [];
   p.opgeslagen = d.opgeslagen;

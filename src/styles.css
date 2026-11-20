@@ -150,3 +150,12 @@ details.sub summary { cursor: pointer; font-size: 13px; color: var(--muted); pad
 .layers h2.collapsible:hover { color: var(--text); }
 .lsec-tools { font-size: 12px; text-align: right; margin-bottom: -4px; }
 #layers[hidden] { display: none; }
+
+.dropdown .menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+.dropdown .menu .mcat { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 6px 10px 2px; }
+#menuElement { max-height: 70vh; overflow-y: auto; }
+.conflictlist { font-size: 12px; margin: 4px 0 0 0; padding-left: 18px; }
+.conflictlist a { color: #b71c1c; }
+
+#toolbar .tools { gap: 6px; }
+#toolbar button { padding: 6px 9px; }

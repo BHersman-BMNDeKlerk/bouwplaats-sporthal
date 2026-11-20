@@ -156,8 +156,8 @@ BGT-classificatie, boomdetectie en undo/redo. In latere fases komen swept path e
 | Fase | Inhoud | Status |
 |---|---|---|
 | 1 | Ondergrond en omgeving: BGT, 3D BAG, AHN, BRK, luchtfoto, bomen, obstakels, lagenpaneel | gereed |
-| 2 | Eigen inmeting (CSV), KLIC-import, handmatige obstakels, DXF-onderlegger | **gereed – ter beoordeling** |
-| 3 | Bouwplaatselementen (keten, hekken, containers, steigers, …), botsingscontrole, maatvoering | gepland |
+| 2 | Eigen inmeting (CSV), KLIC-import, handmatige obstakels, DXF-onderlegger | gereed (KLIC-kleuren nog te verifiëren) |
+| 3 | Bouwplaatselementen (keten, hekken, containers, steigers, …), botsingscontrole, maatvoering | **gereed – ter beoordeling** |
 | 4 | Draai- en steekbewegingen (swept path) met kinematisch model + verplichte tests | gepland |
 | 5 | Kraanopstellingen (toren- en mobiele kraan), lasttabellen, overdraai | gepland |
 | 6 | Output: 2D op schaal, PDF A3/A1 met titelblok, DXF/GeoJSON, PNG, bouwfases | gepland |

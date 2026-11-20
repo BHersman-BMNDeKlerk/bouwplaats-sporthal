@@ -6,6 +6,7 @@ import { HEIGHT_STOPS } from '../scene/buildingsLayer';
 import { HYPSO_STOPS } from '../scene/terrainLayer';
 import { TREE_COLORS } from '../scene/treesLayer';
 import { h } from './dom';
+import type { Conflict, Element } from '../core/elements';
 import type { ProjectData } from '../core/project';
 import type { ActiveBoundary } from '../core/boundary';
 import { PUNT_SOORTEN, type PuntSoort } from '../data/csvPoints';
@@ -29,6 +30,11 @@ export interface LayersPanelOpts {
   boundary: ActiveBoundary;
   onRefVisible: (kind: 'klic' | 'dxf', id: string, v: boolean) => void;
   onPlattegrond?: (on: boolean) => void;
+  /** Fase 3 */
+  elementen: Element[];
+  conflicts: Conflict[];
+  onSelectElement: (id: string) => void;
+  onClearBezet: () => void;
   onOpen: (what: { kind: 'klicRef' | 'dxf'; id: string } | { kind: 'grens' } | { kind: 'codes' }) => void;
 }
 
@@ -124,6 +130,28 @@ export function renderLayersPanel(o: LayersPanelOpts) {
   root.append(check('Perceelgrenzen', () => L.percelen, (v) => (L.percelen = v), 'terrain', { disabled: !data.percelen, swatch: swatch(undefined, '#c2185b') }));
   root.append(check('Perceelnummers', () => L.perceelnummers, (v) => (L.perceelnummers = v), 'terrain', { sub: true }));
   root.append(h('div', { class: 'note warn' }, '⚠ Indicatieve grens (BRK). Niet ingemeten – niet gebruiken voor uitzetten of grenscontrole.'));
+
+  // --- Bouwplaatselementen
+  if (o.elementen.length) {
+    root.append(h('h2', {}, 'Bouwplaatselementen'));
+    const lagen = new Map<string, number>();
+    for (const e of o.elementen) lagen.set(e.laag, (lagen.get(e.laag) ?? 0) + 1);
+    for (const [laag, n] of [...lagen].sort()) root.append(check(`${laag} (${n})`, () => L.elementLagen[laag] !== false, (v) => (L.elementLagen[laag] = v), 'all'));
+    const ids = [...new Set(o.conflicts.map((c) => c.elementId))];
+    root.append(check(`Botsingen in rood tonen${ids.length ? ` (${ids.length})` : ''}`, () => L.botsingen, (v) => (L.botsingen = v), 'all', { swatch: h('span', { class: 'swatch', style: { background: '#e53935' } }) }));
+    if (ids.length && L.botsingen) {
+      const ul = h('ul', { class: 'conflictlist' });
+      for (const id of ids.slice(0, 12)) {
+        const e = o.elementen.find((q) => q.id === id);
+        const cs = o.conflicts.filter((c) => c.elementId === id);
+        if (e) ul.append(h('li', {}, h('a', { href: '#', onclick: (ev: Event) => { ev.preventDefault(); o.onSelectElement(id); } }, e.naam), ` – ${cs.map((c) => c.soort === 'element' ? c.met : c.soort).join(', ')}`));
+      }
+      if (ids.length > 12) ul.append(h('li', {}, `… en ${ids.length - 12} meer`));
+      root.append(ul);
+    } else if (!ids.length) root.append(h('div', { class: 'note', style: { color: '#1b5e20' } }, '✔ Geen botsingen'));
+    if (o.elementen.some((e) => e.groep?.startsWith('bezet')))
+      root.append(h('div', { class: 'note' }, h('a', { href: '#', onclick: (ev: Event) => { ev.preventDefault(); o.onClearBezet(); } }, 'Bezette parkeervakken wissen')));
+  }
 
   // --- Perceelgrens en inmeting
   const P = o.project;

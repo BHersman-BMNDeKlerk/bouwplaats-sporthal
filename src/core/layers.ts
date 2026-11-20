@@ -21,6 +21,9 @@ export interface LayerState {
   lagenVersie: number;
   /** Plattegrond in de stijl van de kadasterkaart (2D, zonder luchtfoto/3D). */
   plattegrond: boolean;
+  /** Fase 3: zichtbaarheid per elementlaag en botsingsweergave. */
+  elementLagen: Record<string, boolean>;
+  botsingen: boolean;
   /** Fase 2 */
   eigenPerceel: boolean;
   grens: boolean;
@@ -74,7 +77,9 @@ export function defaultLayers(): LayerState {
     klicMaatvoering: false,
     klicPunten: true,
     klicGraafpolygoon: true,
-    handmatig: { doorrijhoogte: true, paaltjes: true, hekwerk: true, nietBerijdbaar: true, maatlijn: true },
+    handmatig: { doorrijhoogte: true, paaltjes: true, hekwerk: true, nietBerijdbaar: true, maatlijn: true, looproute: true, vluchtroute: true, vrijvlak: true, vrijelijn: true, vergundeZone: true },
+    elementLagen: {},
+    botsingen: true,
     ontwerp: true,
     ontwerpContour: true,
     ontwerpTransparant: false,

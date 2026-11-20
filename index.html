@@ -20,18 +20,22 @@
           <button id="btnLayers" title="Lagenpaneel in-/uitklappen (L)">☰ Lagen</button>
         </div>
         <div class="group">
-          <button id="btnOpen" title="Project openen (Ctrl+O)">📂 Openen</button>
-          <button id="btnSave" title="Project opslaan (Ctrl+S)">💾 Opslaan</button>
+          <button id="btnOpen" title="Project openen (Ctrl+O)">📂</button>
+          <button id="btnSave" title="Project opslaan (Ctrl+S)">💾</button>
         </div>
         <div class="group">
           <div class="dropdown">
-            <button id="btnImport" title="Inmeting, KLIC of DXF importeren">⇪ Importeren ▾</button>
+            <button id="btnImport" title="Inmeting, KLIC of DXF importeren">⇪ Import ▾</button>
             <div class="menu" id="menuImport" hidden>
               <button data-imp="grens">Ingemeten perceelgrens (CSV)…</button>
               <button data-imp="punten">Ingemeten punten met code (CSV)…</button>
               <button data-imp="klic">KLIC-levering (zip)…</button>
               <button data-imp="dxf">DXF-onderlegger…</button>
             </div>
+          </div>
+          <div class="dropdown">
+            <button id="btnElement" title="Bouwplaatselement plaatsen">＋ Element ▾</button>
+            <div class="menu" id="menuElement" hidden></div>
           </div>
           <div class="dropdown">
             <button id="btnDraw" title="Eigen obstakels tekenen">✎ Tekenen ▾</button>
@@ -42,22 +46,28 @@
               <button data-draw="hekwerk">Bouwhekken 3,50 × 2,00 m (met poorten)</button>
               <button data-draw="nietBerijdbaar">Niet berijdbaar vlak</button>
               <button data-draw="maatlijn">Maatlijn (ook kettingmaat)</button>
+              <hr />
+              <button data-draw="looproute">Looproute</button>
+              <button data-draw="vluchtroute">Vluchtroute</button>
+              <button data-draw="vrijvlak">Vrij vlak met label</button>
+              <button data-draw="vrijelijn">Vrije lijn met label</button>
+              <button data-draw="vergundeZone">Vergunde zone (bv. vergunning openbare weg)</button>
             </div>
           </div>
         </div>
         <div class="group">
-          <button id="btnUndo" title="Ongedaan maken (Ctrl+Z)">↶ Ongedaan</button>
-          <button id="btnRedo" title="Opnieuw (Ctrl+Y)">↷ Opnieuw</button>
+          <button id="btnUndo" title="Ongedaan maken (Ctrl+Z)">↶</button>
+          <button id="btnRedo" title="Opnieuw (Ctrl+Y)">↷</button>
         </div>
         <div class="group">
           <button id="btnTop" title="2D-bovenaanzicht zonder perspectief (T)">⬒ 2D</button>
           <button id="btnOblique" title="3D-aanzicht (P)">◩ 3D</button>
           <button id="btnMeasure" title="Afstand meten (M)">📏 Meten</button>
-          <button id="btnSporthal" title="Zoom naar de sporthal (Z)">⌖ Sporthal</button>
+          <button id="btnSporthal" title="Zoom naar de sporthal (Z)">⌖</button>
         </div>
         <div class="group">
-          <button id="btnSources" title="Herkomst en nauwkeurigheid van de data (B)">ⓘ Bronnen</button>
-          <button id="btnHelp" title="Handleiding (F1 of ?)">? Help</button>
+          <button id="btnSources" title="Herkomst en nauwkeurigheid van de data (B)">ⓘ</button>
+          <button id="btnHelp" title="Handleiding (F1 of ?)">?</button>
         </div>
       </div>
       <input type="file" id="fileOpen" accept=".json,application/json" hidden />
