@@ -24,6 +24,8 @@ import type { ManualKind, ManualObject } from './core/project';
 import { dxfOverlay, GRENS_KLEUR, hitKlic, hitManual, hitSurvey, klicOverlay, MANUAL_STYLE, manualOverlay, surveyOverlay, type KlicHit, type SurveyHit } from './scene/overlays';
 import { UserLayer } from './scene/userLayer';
 import { DrawTool, type DrawGeom } from './scene/drawTool';
+import { EditHandles } from './scene/editHandles';
+import { BOUWHEK, clampGate, nearestPanel, panels, snapFrom, totalLength, type Pt } from './core/polyline';
 import { editCodes, importBoundary, importDxf, importKlic, importPoints, type ImportContext } from './ui/importDialogs';
 import { themaStyle } from './data/klic';
 
@@ -97,10 +99,14 @@ async function start() {
   const drawTool = new DrawTool(frame, (x, y) => terrain.heightAt(x, y), (msg) => status(msg, 0));
   viewer.scene.add(drawTool.group);
   let selectedManual: string | null = null;
+  /** Object dat nu gesleept wordt (niet op de terreintextuur tekenen). */
+  let dragHidden: string | null = null;
+  const handles = new EditHandles(frame, (x, y) => terrain.heightAt(x, y));
+  viewer.scene.add(handles.group);
   terrain.overlays.push(
     dxfOverlay(() => store.data, () => designPlacement()),
     klicOverlay(() => store.data),
-    manualOverlay(() => store.data, () => selectedManual),
+    manualOverlay(() => store.data, () => selectedManual, () => dragHidden),
     surveyOverlay(() => store.data),
   );
 
@@ -192,6 +198,7 @@ async function start() {
   };
   updateUndo();
   store.onChange((_p, reden) => {
+    if (selectedManual) handles.set(store.data.handmatig.find((q) => q.id === selectedManual) ?? null);
     applyScene();
     renderPanel();
     refreshInfo();
@@ -210,6 +217,7 @@ async function start() {
     obstacles.apply(L, store.data.overschrijvingen.obstakels);
     const prevManual = selectedManual;
     selectedManual = s?.kind === 'manual' ? s.id : null;
+    handles.set(selectedManual ? store.data.handmatig.find((q) => q.id === selectedManual) ?? null : null);
     if (prevManual !== selectedManual) applyScene();
     refreshInfo();
   }
@@ -316,7 +324,7 @@ async function start() {
     if (drawTool.active) {
       tooltip.hidden = true;
       const tp = hit?.point;
-      if (tp) { const rd = frame.toRD(tp.x, tp.y, tp.z); drawTool.move(rd.x, rd.y); stCoord.textContent = fmtRD(rd.x, rd.y); }
+      if (tp) { const rd = frame.toRD(tp.x, tp.y, tp.z); drawTool.move(rd.x, rd.y, ev.shiftKey); stCoord.textContent = fmtRD(rd.x, rd.y); }
       return;
     }
     buildings?.setHover(hit?.kind === 'building' ? hit.b : null);
@@ -399,7 +407,7 @@ async function start() {
     if (moved > 4) return;
     const hit = pick(ev);
     if (drawTool.active) {
-      if (hit) { const rd = frame.toRD(hit.point.x, hit.point.y, hit.point.z); drawTool.click(rd.x, rd.y); }
+      if (hit) { const rd = frame.toRD(hit.point.x, hit.point.y, hit.point.z); drawTool.click(rd.x, rd.y, ev.shiftKey); }
       return;
     }
     if (!hit) return select(null);
@@ -452,7 +460,7 @@ async function start() {
     'doorrijhoogte-lijn': { soort: 'doorrijhoogte', geom: 'lijn', naam: 'Doorrijhoogte', extra: { vrijeHoogte: 4.0 } },
     'doorrijhoogte-vlak': { soort: 'doorrijhoogte', geom: 'vlak', naam: 'Doorrijhoogte', extra: { vrijeHoogte: 4.0 } },
     paaltjes: { soort: 'paaltjes', geom: 'punten', naam: 'Paaltjes', extra: { hoogte: 0.9 } },
-    hekwerk: { soort: 'hekwerk', geom: 'lijn', naam: 'Hekwerk', extra: { hoogte: 2.0 } },
+    hekwerk: { soort: 'hekwerk', geom: 'lijn', naam: 'Bouwhekken', extra: { hoogte: BOUWHEK.hoogte, poorten: [] } },
     nietBerijdbaar: { soort: 'nietBerijdbaar', geom: 'vlak', naam: 'Niet berijdbaar', extra: {} },
   };
   const startDraw = (key: string) => {
@@ -461,6 +469,10 @@ async function start() {
     $('viewport').classList.add('drawing');
     drawTool.start({
       geom: d.geom, kleur: MANUAL_STYLE[d.soort].kleur, titel: `${MANUAL_STYLE[d.soort].label} tekenen`,
+      ...(d.soort === 'hekwerk' ? {
+        snap: (prev: Pt, t: Pt) => snapFrom(prev, t),
+        info: (pts: Pt[]) => `${panels(pts).length} bouwhekken (${BOUWHEK.lengte.toLocaleString('nl-NL')} m) – Shift = vrij`,
+      } : {}),
       onFinish: (coords) => {
         $('viewport').classList.remove('drawing');
         const id = `m-${Date.now().toString(36)}`;
@@ -472,6 +484,120 @@ async function start() {
     });
   };
   for (const b of $('menuDraw').querySelectorAll('button')) (b as HTMLButtonElement).onclick = () => { closeMenus(); startDraw((b as HTMLElement).dataset.draw!); };
+
+  // --- slepen van eigen objecten (hoekpunten, tussenpunten, poorten, geheel)
+  type Drag = {
+    o: ManualObject; orig: ManualObject; kind: 'vertex' | 'mid' | 'gate' | 'body'; index: number; gateId?: string;
+    start: Pt; moved: boolean; sx: number; sy: number;
+  };
+  let drag: Drag | null = null;
+  const rayAt = (ev: MouseEvent) => {
+    const rect = canvas.getBoundingClientRect();
+    ndc.set(((ev.clientX - rect.left) / rect.width) * 2 - 1, -((ev.clientY - rect.top) / rect.height) * 2 + 1);
+    raycaster.setFromCamera(ndc, viewer.camera);
+    return raycaster;
+  };
+  const terrainRD = (ev: MouseEvent): Pt | null => {
+    const tp = terrain.intersectRay(rayAt(ev).ray);
+    if (!tp) return null;
+    const rd = frame.toRD(tp.x, tp.y, tp.z);
+    return [rd.x, rd.y];
+  };
+  const fmt2 = (v: number) => v.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const shapeStatus = (o: ManualObject, seg?: number): string => {
+    const pts = o.coords as Pt[];
+    if (o.soort === 'hekwerk') {
+      const ps = panels(pts);
+      const ing = ps.filter((p) => !p.heel).length;
+      const z = seg != null && seg >= 0 && seg < pts.length - 1 ? ` · zijde ${fmt2(Math.hypot(pts[seg + 1][0] - pts[seg][0], pts[seg + 1][1] - pts[seg][1]))} m` : '';
+      return `Bouwhekken: ${ps.length} stuks${ing ? ` (${ing} ingekort)` : ''} · ${fmt2(totalLength(pts))} m${z} · ${(o.poorten ?? []).length} poort(en)`;
+    }
+    if (o.geom === 'vlak') {
+      let a = 0;
+      for (let i = 0; i < pts.length; i++) { const q = pts[(i + 1) % pts.length]; a += pts[i][0] * q[1] - q[0] * pts[i][1]; }
+      return `${MANUAL_STYLE[o.soort].label}: ${fmt2(Math.abs(a) / 2)} m²`;
+    }
+    return `${MANUAL_STYLE[o.soort].label}: ${pts.length > 1 ? `${fmt2(totalLength(pts))} m` : `${pts.length} punt(en)`}`;
+  };
+  const applyDrag = (d: Drag, p: Pt, free: boolean) => {
+    const o = d.o;
+    const fence = o.soort === 'hekwerk' && !free;
+    if (d.kind === 'mid') {
+      o.coords.splice(d.index + 1, 0, p);
+      d.kind = 'vertex';
+      d.index = d.index + 1;
+    }
+    if (d.kind === 'vertex') {
+      let q = p;
+      if (fence && o.coords.length >= 2) q = snapFrom(d.index > 0 ? o.coords[d.index - 1] as Pt : o.coords[1] as Pt, p);
+      o.coords[d.index] = [Math.round(q[0] * 1000) / 1000, Math.round(q[1] * 1000) / 1000];
+    } else if (d.kind === 'gate' && o.poorten) {
+      const ps = panels(o.coords as Pt[]);
+      const g = o.poorten.find((x) => x.id === d.gateId);
+      if (g) Object.assign(g, clampGate({ ...g, start: nearestPanel(ps, p[0], p[1]) - Math.floor((g.aantal - 1) / 2) }, ps.length));
+    } else if (d.kind === 'body') {
+      const dx = p[0] - d.start[0], dy = p[1] - d.start[1];
+      o.coords = d.orig.coords.map(([x, y]) => [Math.round((x + dx) * 1000) / 1000, Math.round((y + dy) * 1000) / 1000]);
+    }
+  };
+  $('viewport').addEventListener('pointerdown', (ev) => {
+    if (ev.button !== 0 || drawTool.active || !selectedManual) return;
+    const o = store.data.handmatig.find((q) => q.id === selectedManual);
+    if (!o) return;
+    const hInfo = handles.pick(rayAt(ev));
+    let kind: Drag['kind'];
+    if (hInfo) kind = hInfo.kind;
+    else {
+      const hit = pick(ev);
+      if (hit?.kind !== 'manual' || hit.o.id !== o.id) return;
+      kind = 'body';
+    }
+    const p = terrainRD(ev);
+    if (!p) return;
+    ev.stopPropagation();
+    drag = { o, orig: JSON.parse(JSON.stringify(o)), kind, index: hInfo?.index ?? 0, gateId: hInfo?.gateId, start: p, moved: false, sx: ev.clientX, sy: ev.clientY };
+    viewer.controls.enabled = false;
+  }, { capture: true });
+  window.addEventListener('pointermove', (ev) => {
+    if (!drag) return;
+    if (!drag.moved && Math.hypot(ev.clientX - drag.sx, ev.clientY - drag.sy) < 4) return;
+    const p = terrainRD(ev);
+    if (!p) return;
+    if (!drag.moved) { drag.moved = true; dragHidden = drag.o.id; terrain.redraw(L); }
+    applyDrag(drag, p, ev.shiftKey);
+    userLayer.apply(store.data, L, selectedManual);
+    handles.set(drag.o, true);
+    status(`${shapeStatus(drag.o, drag.kind === 'vertex' ? drag.index - 1 : undefined)}${drag.o.soort === 'hekwerk' ? ' — Shift = vrij slepen' : ''}`, 0);
+  });
+  window.addEventListener('pointerup', () => {
+    if (!drag) return;
+    const d = drag;
+    drag = null;
+    viewer.controls.enabled = true;
+    if (!d.moved) return;
+    dragHidden = null;
+    const coords = d.o.coords.map((q) => [q[0], q[1]] as [number, number]);
+    const poorten = d.o.poorten ? JSON.parse(JSON.stringify(d.o.poorten)) : undefined;
+    d.o.coords = d.orig.coords;
+    d.o.poorten = d.orig.poorten;
+    const label = { vertex: 'Hoekpunt verplaatst', mid: 'Hoekpunt toegevoegd', gate: 'Poort verschoven', body: `${MANUAL_STYLE[d.o.soort].label} verplaatst` }[d.kind];
+    store.change(label, (pd) => {
+      const x = pd.handmatig.find((q) => q.id === d.o.id);
+      if (x) { x.coords = coords; if (poorten) x.poorten = poorten; }
+    });
+    status(shapeStatus(store.data.handmatig.find((q) => q.id === d.o.id)!));
+  });
+  // dubbelklik op een hoekpunt = verwijderen
+  canvas.addEventListener('dblclick', (ev) => {
+    if (drawTool.active || !selectedManual) return;
+    const h0 = handles.pick(rayAt(ev));
+    if (h0?.kind !== 'vertex') return;
+    const o = store.data.handmatig.find((q) => q.id === selectedManual)!;
+    const min = o.geom === 'vlak' ? 3 : o.geom === 'lijn' ? 2 : 1;
+    if (o.coords.length <= min) { status(`Minimaal ${min} punt(en) nodig`); return; }
+    store.change('Hoekpunt verwijderd', (pd) => { const x = pd.handmatig.find((q) => q.id === o.id); if (x) x.coords.splice(h0.index, 1); });
+  });
+  viewer.onFrame(() => { if (handles.visible) handles.scale(mppAt(viewer.controls.target)); });
 
   // --- camera
   const sporthalCenter = (): THREE.Vector3 => {

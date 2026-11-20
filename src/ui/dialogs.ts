@@ -65,6 +65,11 @@ export function helpContent(): Node {
   <p>Vrije doorrijhoogte (lijn of vlak), paaltjes, hekwerk en niet-berijdbare vlakken. <b>Klik</b> = punt toevoegen (slepen blijft de
   kaart verschuiven), <b>dubbelklik</b> of <kbd>Enter</kbd> = klaar, <kbd>Backspace</kbd> = laatste punt weg, <kbd>Esc</kbd> = annuleren.
   Daarna kun je naam en hoogte aanpassen of het obstakel verwijderen. Tip: teken in de 2D-weergave (<kbd>T</kbd>).</p>
+  <p><b>Bouwhekken</b> zijn hele hekken van 3,50 × 2,00 m: zijden springen naar een veelvoud van 3,50 m (<kbd>Shift</kbd> = vrij).
+  Zijden die geen hele hekken zijn, worden rood; <i>Hele hekken maken</i> herstelt dat. Een <b>poort</b> voeg je toe in het paneel
+  rechts (standaard 2 hekken = 7,00 m) en verschuif je met het oranje blokje.</p>
+  <p><b>Bewerken:</b> selecteer een object en sleep de blauwe bolletjes (hoekpunten), een wit tussenpunt (nieuw hoekpunt) of het
+  object zelf (verplaatsen). Dubbelklik op een hoekpunt verwijdert het. Alles is ongedaan te maken met <kbd>Ctrl</kbd>+<kbd>Z</kbd>.</p>
   <h3>Ontwerpmodel (IFC)</h3>
   <p>Het nieuwe pand staat onder <b>Ontwerp (IFC)</b> als grijze blokken (buitenwerkse contour, per deel tot de
   hoogste dakrand) en als paarse buitencontour op het maaiveld. Klik op het pand voor peil (0 P = −0,08 m NAP),

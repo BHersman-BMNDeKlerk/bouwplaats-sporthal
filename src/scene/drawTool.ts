@@ -14,6 +14,10 @@ export interface DrawRequest {
   titel: string;
   onFinish: (coords: [number, number][]) => void;
   onCancel?: () => void;
+  /** Optioneel: nieuw punt laten "springen" t.o.v. het vorige (bv. hele bouwhekken). */
+  snap?: (prev: [number, number], target: [number, number]) => [number, number];
+  /** Optioneel: extra statustekst op basis van de punten. */
+  info?: (pts: [number, number][]) => string;
 }
 
 export class DrawTool {
@@ -50,17 +54,24 @@ export class DrawTool {
   }
 
   /** Klik op het maaiveld (RD). */
-  click(x: number, y: number) {
+  private snapped(x: number, y: number, free: boolean): [number, number] {
+    const last = this.pts[this.pts.length - 1];
+    if (!this.req?.snap || free || !last) return [x, y];
+    return this.req.snap(last, [x, y]);
+  }
+
+  click(x0: number, y0: number, free = false) {
     if (!this.req) return;
+    const [x, y] = this.snapped(x0, y0, free);
     const last = this.pts[this.pts.length - 1];
     if (last && Math.hypot(last[0] - x, last[1] - y) < 0.05) return;
     this.pts.push([Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000]);
     this.update();
   }
 
-  move(x: number, y: number) {
+  move(x: number, y: number, free = false) {
     if (!this.req) return;
-    this.cursor = [x, y];
+    this.cursor = this.snapped(x, y, free);
     this.update();
   }
 
@@ -129,6 +140,7 @@ export class DrawTool {
       for (let i = 0; i < all.length - 1; i++) a += all[i][0] * all[i + 1][1] - all[i + 1][0] * all[i][1];
       info += ` · oppervlakte ${fmt(Math.abs(a / 2), 1)} m²`;
     }
+    if (this.req.info) info += ` · ${this.req.info(all)}`;
     this.status(`${info} — klik = punt, dubbelklik/Enter = klaar, Backspace = punt terug, Esc = annuleren`);
   }
 }

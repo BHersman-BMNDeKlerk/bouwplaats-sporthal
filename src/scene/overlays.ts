@@ -4,13 +4,14 @@
  */
 import type { LayerState } from '../core/layers';
 import type { DxfRef, ManualObject, ProjectData } from '../core/project';
-import { boundaryRing, polylineLength } from '../core/boundary';
+import { boundaryRing } from '../core/boundary';
 import { PUNT_SOORTEN, type MeetPunt, type PuntSoort } from '../data/csvPoints';
 import { dxfToRD, type DxfData } from '../data/dxf';
 import { distPointSegment, pointInRing } from '../data/geom';
 import type { Placement } from '../data/ifcGeom';
 import { themaStyle, type KlicData, type KlicLine } from '../data/klic';
 import type { CanvasOverlay, DrawContext } from './terrainLayer';
+import { gatePanels, panels } from '../core/polyline';
 
 const inView = (c: DrawContext, x: number, y: number, m = 5) => x > c.bb.xmin - m && x < c.bb.xmax + m && y > c.bb.ymin - m && y < c.bb.ymax + m;
 const fmt = (v: number, d = 2) => v.toLocaleString('nl-NL', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -341,7 +342,7 @@ export function dxfOverlay(getP: () => ProjectData, getIfc: () => Placement | nu
 export const MANUAL_STYLE: Record<ManualObject['soort'], { label: string; kleur: string }> = {
   doorrijhoogte: { label: 'Vrije doorrijhoogte', kleur: '#f57c00' },
   paaltjes: { label: 'Paaltjes', kleur: '#c62828' },
-  hekwerk: { label: 'Hekwerk', kleur: '#37474f' },
+  hekwerk: { label: 'Bouwhekken', kleur: '#263238' },
   nietBerijdbaar: { label: 'Niet berijdbaar', kleur: '#d32f2f' },
 };
 
@@ -361,12 +362,12 @@ function hatchPattern(ctx: CanvasRenderingContext2D, col: string): CanvasPattern
   return ctx.createPattern(hatch, 'repeat') ?? col + '44';
 }
 
-export function manualOverlay(getP: () => ProjectData, selectedId: () => string | null): CanvasOverlay {
+export function manualOverlay(getP: () => ProjectData, selectedId: () => string | null, hiddenId: () => string | null = () => null): CanvasOverlay {
   return (c, L) => {
     const p = getP();
     const { ctx, ppm } = c;
     for (const o of p.handmatig) {
-      if (!L.handmatig[o.soort]) continue;
+      if (!L.handmatig[o.soort] || o.id === hiddenId()) continue;
       const st = MANUAL_STYLE[o.soort];
       const sel = selectedId() === o.id;
       const pts = o.coords;
@@ -387,6 +388,9 @@ export function manualOverlay(getP: () => ProjectData, selectedId: () => string 
         ctx.setLineDash(o.soort === 'doorrijhoogte' ? [0.8 * ppm, 0.4 * ppm] : []);
         ctx.stroke();
         ctx.setLineDash([]);
+      } else if (o.soort === 'hekwerk' && pts.length >= 2) {
+        drawFence(c, o, sel);
+        continue;
       } else if (o.geom === 'lijn' && pts.length >= 2) {
         ctx.beginPath();
         c.path(pts);
@@ -407,10 +411,81 @@ export function manualOverlay(getP: () => ProjectData, selectedId: () => string 
       const cx = pts.reduce((s, q) => s + q[0], 0) / pts.length, cy = pts.reduce((s, q) => s + q[1], 0) / pts.length;
       let t = o.naam;
       if (o.soort === 'doorrijhoogte' && o.vrijeHoogte != null) t = `${o.naam} – vrij ${fmt(o.vrijeHoogte)} m`;
-      if (o.soort === 'hekwerk') t = `${o.naam} ${fmt(polylineLength(pts), 1)} m`;
       if (t) c.label(t, cx, cy, 0, 0.9, st.kleur, '#ffffffee', true);
     }
   };
+}
+
+export const POORT_KLEUR = '#ff9800';
+export const INGEKORT_KLEUR = '#e53935';
+
+/** Hekwerk als reeks bouwhekken (3,50 m) met voeten, ingekorte hekken en poorten. */
+function drawFence(c: DrawContext, o: ManualObject, sel: boolean) {
+  const { ctx, ppm } = c;
+  const ps = panels(o.coords);
+  const gp = gatePanels(o.poorten ?? [], ps.length);
+  const base = sel ? '#fdd835' : MANUAL_STYLE.hekwerk.kleur;
+  // witte rand onder het hek voor contrast op de luchtfoto
+  ctx.beginPath();
+  c.path(o.coords);
+  ctx.strokeStyle = '#ffffffcc';
+  ctx.lineWidth = Math.max(5, 0.45 * ppm);
+  ctx.stroke();
+  for (const p of ps) {
+    const gate = gp.get(p.index);
+    ctx.beginPath();
+    ctx.moveTo(c.X(p.a[0]), c.Y(p.a[1]));
+    ctx.lineTo(c.X(p.b[0]), c.Y(p.b[1]));
+    ctx.strokeStyle = gate ? POORT_KLEUR : p.heel ? base : INGEKORT_KLEUR;
+    ctx.lineWidth = Math.max(3, (gate ? 0.3 : 0.25) * ppm);
+    ctx.setLineDash(gate ? [0.5 * ppm, 0.25 * ppm] : []);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    if (gate) {
+      // draaicirkel van de poortvleugel (scharnier aan de buitenkant van de poort)
+      const first = p.index === gate.start, last = p.index === gate.start + gate.aantal - 1;
+      const hinge = first || !last ? p.a : p.b;
+      const other = hinge === p.a ? p.b : p.a;
+      const a0 = Math.atan2(-(other[1] - hinge[1]), other[0] - hinge[0]);
+      const sweep = (hinge === p.a ? -1 : 1) * (Math.PI / 2);
+      ctx.beginPath();
+      ctx.arc(c.X(hinge[0]), c.Y(hinge[1]), p.lengte * ppm, a0, a0 + sweep, sweep < 0);
+      ctx.strokeStyle = POORT_KLEUR + 'aa';
+      ctx.lineWidth = Math.max(1, 0.05 * ppm);
+      ctx.stroke();
+    }
+  }
+  // voeten op de hekovergangen
+  const dirs = ps.map((p) => [(p.b[0] - p.a[0]) / (p.lengte || 1), (p.b[1] - p.a[1]) / (p.lengte || 1)]);
+  ctx.strokeStyle = base;
+  ctx.lineWidth = Math.max(2, 0.18 * ppm);
+  ctx.beginPath();
+  ps.forEach((p, i) => {
+    for (const q of i === ps.length - 1 ? [p.a, p.b] : [p.a]) {
+      const [dx, dy] = dirs[i];
+      ctx.moveTo(c.X(q[0] - dy * 0.3), c.Y(q[1] + dx * 0.3));
+      ctx.lineTo(c.X(q[0] + dy * 0.3), c.Y(q[1] - dx * 0.3));
+    }
+  });
+  ctx.stroke();
+  // labels
+  const nHeel = ps.filter((p) => p.heel).length;
+  const nIngekort = ps.length - nHeel;
+  const mid = ps[Math.floor(ps.length / 2)];
+  if (mid) {
+    const ang = (Math.atan2(mid.b[1] - mid.a[1], mid.b[0] - mid.a[0]) * 180) / Math.PI;
+    const t = `${o.naam ? o.naam + ': ' : ''}${ps.length} hekken${nIngekort ? ` (${nIngekort} ingekort)` : ''}`;
+    const nx = -(mid.b[1] - mid.a[1]) / (mid.lengte || 1), ny = (mid.b[0] - mid.a[0]) / (mid.lengte || 1);
+    c.label(t, (mid.a[0] + mid.b[0]) / 2 + nx * 1.2, (mid.a[1] + mid.b[1]) / 2 + ny * 1.2, ang, 0.9, nIngekort ? INGEKORT_KLEUR : MANUAL_STYLE.hekwerk.kleur, '#ffffffee', true);
+  }
+  for (const g of o.poorten ?? []) {
+    const sel2 = ps.filter((p) => gp.get(p.index)?.id === g.id);
+    if (!sel2.length) continue;
+    const a = sel2[0].a, b = sel2[sel2.length - 1].b;
+    const ang = (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
+    const w = sel2.reduce((sum, p) => sum + p.lengte, 0);
+    c.label(`${g.naam || 'poort'} ${fmt(w)} m`, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, ang, 0.85, '#b26a00', '#ffffffee', true);
+  }
 }
 
 /** Aanwijzen van een eigen obstakel in 2D (vlak of lijn). */

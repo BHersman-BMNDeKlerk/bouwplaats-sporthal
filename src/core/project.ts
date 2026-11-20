@@ -8,6 +8,7 @@ import type { DxfData, DxfPlacement } from '../data/dxf';
 import type { HeightOverride } from '../data/heights';
 import type { Placement } from '../data/ifcGeom';
 import type { KlicData } from '../data/klic';
+import type { Gate } from './polyline';
 
 export interface TreeOverride {
   hoogte?: number;
@@ -80,6 +81,8 @@ export interface ManualObject {
   vrijeHoogte?: number;
   /** Paaltjes/hekwerk: hoogte boven maaiveld (m). */
   hoogte?: number;
+  /** Hekwerk: poorten (reeksen hele bouwhekken). */
+  poorten?: Gate[];
   opmerking?: string;
 }
 

@@ -19,6 +19,7 @@ import type { DxfData } from '../data/dxf';
 import { MANUAL_STYLE, soortVan } from '../scene/overlays';
 import { polylineLength, activeBoundary, type ActiveBoundary } from '../core/boundary';
 import { ringArea } from '../data/geom';
+import { BOUWHEK, clampGate, panels, totalLength, wholePanels, type Pt } from '../core/polyline';
 
 export class InfoPanel {
   constructor(private readonly root: HTMLElement, private readonly store: ProjectStore, private readonly onClose: () => void) {}
@@ -351,7 +352,7 @@ export class InfoPanel {
   showManual(o: ManualObject, onDelete: () => void) {
     const st = MANUAL_STYLE[o.soort];
     const iNaam = h('input', { type: 'text', value: o.naam });
-    const needsH = o.soort === 'paaltjes' || o.soort === 'hekwerk';
+    const needsH = o.soort === 'paaltjes';
     const iH = h('input', { type: 'text', inputmode: 'decimal', value: String((o.soort === 'doorrijhoogte' ? o.vrijeHoogte : o.hoogte) ?? '').replace('.', ',') });
     const iNote = h('input', { type: 'text', value: o.opmerking ?? '', placeholder: 'opmerking' });
     const save = () => {
@@ -372,14 +373,56 @@ export class InfoPanel {
       h('fieldset', {},
         h('legend', {}, 'Eigenschappen'),
         h('div', { class: 'frow' }, 'Naam', iNaam),
-        o.soort !== 'nietBerijdbaar' ? h('div', { class: 'frow' }, o.soort === 'doorrijhoogte' ? 'Vrije hoogte boven maaiveld (m)' : 'Hoogte (m)', iH) : null,
+        o.soort === 'doorrijhoogte' || o.soort === 'paaltjes' ? h('div', { class: 'frow' }, o.soort === 'doorrijhoogte' ? 'Vrije hoogte boven maaiveld (m)' : 'Hoogte (m)', iH) : null,
         h('div', { class: 'frow', style: { gridTemplateColumns: '1fr' } }, iNote),
         h('div', { class: 'btnrow' },
           h('button', { class: 'primary', onclick: save }, 'Toepassen'),
           h('button', { onclick: () => { if (confirm(`${st.label} verwijderen?`)) onDelete(); } }, 'Verwijderen')),
       ),
+      o.soort === 'hekwerk' ? this.fenceSection(o) : null,
+      h('div', { class: 'note', style: { marginLeft: 0 } }, o.geom === 'punten' ? 'Sleep een punt om het te verplaatsen; dubbelklik op een punt om het te verwijderen.' : 'Sleep de blauwe bolletjes om hoekpunten te verplaatsen, sleep een wit tussenpunt om een hoekpunt toe te voegen, dubbelklik op een hoekpunt om het te verwijderen. Sleep het object zelf om het geheel te verplaatsen. Ongedaan maken: Ctrl+Z.'),
       o.soort === 'doorrijhoogte' ? h('div', { class: 'note', style: { marginLeft: 0 } }, 'Wordt in fase 4 gebruikt voor de conflictcontrole met de voertuighoogte.') : null,
       o.soort === 'nietBerijdbaar' ? h('div', { class: 'note', style: { marginLeft: 0 } }, 'Vlak waar voertuigen niet mogen of kunnen rijden (fase 4).') : null,
+    );
+  }
+
+  /** Hekwerk: telling bouwhekken, ingekorte hekken en poorten. */
+  private fenceSection(o: ManualObject): Node {
+    const ps = panels(o.coords as Pt[]);
+    const ing = ps.filter((p) => !p.heel);
+    const gates = o.poorten ?? [];
+    const fmt = (v: number) => v.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const upd = (label: string, fn: (x: ManualObject) => void) => this.store.change(label, (d) => { const x = d.handmatig.find((q) => q.id === o.id); if (x) fn(x); });
+    const gateRows = gates.map((g0, i) => {
+      const g = clampGate(g0, ps.length);
+      const naam = h('input', { type: 'text', value: g.naam ?? '', placeholder: `poort ${i + 1}`, style: { width: '110px' } });
+      naam.addEventListener('change', () => upd('Poort hernoemd', (x) => { const q = x.poorten!.find((y) => y.id === g.id); if (q) q.naam = naam.value.trim() || undefined; }));
+      naam.addEventListener('keydown', (ev) => ev.stopPropagation());
+      const sel = h('select', { onchange: (e: Event) => upd('Poortbreedte aangepast', (x) => { const q = x.poorten!.find((y) => y.id === g.id); if (q) Object.assign(q, clampGate({ ...q, aantal: Number((e.target as HTMLSelectElement).value) }, ps.length)); }) },
+        ...[1, 2, 3, 4].map((n) => h('option', { value: String(n), selected: n === g.aantal }, `${n} hek${n > 1 ? 'ken' : ''} (${fmt(n * BOUWHEK.lengte)} m)`)));
+      return h('tr', {}, h('td', {}, naam), h('td', {}, sel), h('td', {}, `hek ${g.start + 1}–${g.start + g.aantal}`),
+        h('td', {}, h('button', { title: 'Poort verwijderen', onclick: () => upd('Poort verwijderd', (x) => { x.poorten = (x.poorten ?? []).filter((y) => y.id !== g.id); }) }, '✕')));
+    });
+    const addGate = () => upd('Poort toegevoegd', (x) => {
+      const n = panels(x.coords as Pt[]).length;
+      const aantal = Math.min(2, n);
+      x.poorten = [...(x.poorten ?? []), clampGate({ id: `g-${Date.now().toString(36)}`, start: Math.floor((n - aantal) / 2), aantal }, n)];
+    });
+    return h('fieldset', {},
+      h('legend', {}, `Bouwhekken ${BOUWHEK.lengte.toLocaleString('nl-NL')} × ${BOUWHEK.hoogte.toLocaleString('nl-NL')} m`),
+      h('table', {},
+        h('tr', {}, h('td', {}, 'Lengte'), h('td', { class: 'num' }, `${fmt(totalLength(o.coords as Pt[]))} m`)),
+        h('tr', {}, h('td', {}, 'Aantal bouwhekken'), h('td', { class: 'num' }, String(ps.length))),
+        h('tr', {}, h('td', {}, 'Waarvan in poorten'), h('td', { class: 'num' }, String(gates.reduce((n, g) => n + clampGate(g, ps.length).aantal, 0)))),
+        h('tr', {}, h('td', {}, 'Betonvoeten'), h('td', { class: 'num' }, String(ps.length ? ps.length + 1 : 0))),
+        ing.length ? h('tr', {}, h('td', {}, h('span', { class: 'badge warn' }, 'ingekort')), h('td', { class: 'num' }, ing.map((p) => `${fmt(p.lengte)} m`).join(', '))) : null,
+      ),
+      ing.length ? h('div', { class: 'note warn', style: { marginLeft: 0 } }, `${ing.length} zijde(n) bestaan niet uit hele hekken (rood). `,
+        h('button', { onclick: () => upd('Hele hekken gemaakt', (x) => { x.coords = wholePanels(x.coords as Pt[]); }) }, 'Hele hekken maken')) : null,
+      h('div', { class: 'kv', style: { marginTop: '8px' } }, h('b', {}, 'Poorten')),
+      gates.length ? h('table', {}, ...gateRows) : h('div', { class: 'note', style: { marginLeft: 0 } }, 'Nog geen poort.'),
+      h('div', { class: 'btnrow' }, h('button', { onclick: addGate }, '＋ Poort toevoegen')),
+      h('div', { class: 'note', style: { marginLeft: 0 } }, 'Sleep het oranje blokje boven de poort om hem langs het hek te verschuiven (per heel hek).'),
     );
   }
 

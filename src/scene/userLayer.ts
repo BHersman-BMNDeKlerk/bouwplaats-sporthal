@@ -5,7 +5,8 @@ import type { LayerState } from '../core/layers';
 import type { ManualObject, ProjectData } from '../core/project';
 import { PUNT_SOORTEN } from '../data/csvPoints';
 import { triangulate3D } from '../data/geom';
-import { GRENS_KLEUR, MANUAL_STYLE, soortVan } from './overlays';
+import { GRENS_KLEUR, INGEKORT_KLEUR, MANUAL_STYLE, POORT_KLEUR, soortVan } from './overlays';
+import { BOUWHEK, gatePanels, panels } from '../core/polyline';
 
 const fmt = (v: number) => v.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -73,29 +74,7 @@ export class UserLayer {
         grp.add(m);
       }
     } else if (o.soort === 'hekwerk') {
-      const h = o.hoogte ?? 2.0;
-      const panel = new THREE.MeshLambertMaterial({ color: sel ? '#ffeb3b' : '#9aa5ad', transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false });
-      for (let i = 0; i < pts.length - 1; i++) {
-        const a = this.L(pts[i][0], pts[i][1]), b = this.L(pts[i + 1][0], pts[i + 1][1]);
-        const g = new THREE.BufferGeometry();
-        g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([a.x, a.y, a.z, b.x, b.y, b.z, b.x, b.y + h, b.z, a.x, a.y + h, a.z]), 3));
-        g.setIndex([0, 1, 2, 0, 2, 3]);
-        g.computeVertexNormals();
-        const m = new THREE.Mesh(g, panel);
-        m.userData = grp.userData;
-        grp.add(m);
-        // palen om de ±3,5 m
-        const len = a.distanceTo(b);
-        const n = Math.max(1, Math.round(len / 3.5));
-        for (let k = 0; k <= n; k++) {
-          if (k === 0 && i > 0) continue;
-          const q = a.clone().lerp(b, k / n);
-          const post = new THREE.Mesh(new THREE.BoxGeometry(0.05, h, 0.05), mat);
-          post.position.set(q.x, q.y + h / 2, q.z);
-          post.userData = grp.userData;
-          grp.add(post);
-        }
-      }
+      this.addFence(o, sel, grp);
     } else if (o.soort === 'doorrijhoogte') {
       const h = o.vrijeHoogte ?? 4.0;
       const t = 0.35; // dikte van de "balk"
@@ -138,6 +117,48 @@ export class UserLayer {
       grp.add(lab);
     }
     if (grp.children.length) this.group.add(grp);
+  }
+
+  /** Bouwhekken van 3,50 × 2,00 m: gaasveld met frame, betonvoeten en poortvleugels. */
+  private addFence(o: ManualObject, sel: boolean, grp: THREE.Group) {
+    const h = BOUWHEK.hoogte;
+    const ps = panels(o.coords);
+    const gp = gatePanels(o.poorten ?? [], ps.length);
+    const mesh = (kleur: string) => new THREE.MeshLambertMaterial({ color: kleur, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false });
+    const mats = {
+      hek: mesh(sel ? '#fff176' : '#b0bec5'), poort: mesh(POORT_KLEUR), ingekort: mesh(INGEKORT_KLEUR),
+    };
+    const frame = {
+      hek: new THREE.LineBasicMaterial({ color: sel ? '#f9a825' : '#546e7a' }), poort: new THREE.LineBasicMaterial({ color: '#e65100' }),
+      ingekort: new THREE.LineBasicMaterial({ color: '#b71c1c' }),
+    };
+    const voet = new THREE.MeshLambertMaterial({ color: '#9e9e9e' });
+    const lift = 0.12; // hek staat in de voet
+    for (const p of ps) {
+      const kind = gp.has(p.index) ? 'poort' : p.heel ? 'hek' : 'ingekort';
+      const a = this.L(p.a[0], p.a[1], lift), b = this.L(p.b[0], p.b[1], lift);
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([a.x, a.y, a.z, b.x, b.y, b.z, b.x, b.y + h, b.z, a.x, a.y + h, a.z]), 3));
+      g.setIndex([0, 1, 2, 0, 2, 3]);
+      g.computeVertexNormals();
+      const m = new THREE.Mesh(g, mats[kind]);
+      m.userData = grp.userData;
+      grp.add(m);
+      const f = new THREE.BufferGeometry().setFromPoints([a, b, new THREE.Vector3(b.x, b.y + h, b.z), new THREE.Vector3(a.x, a.y + h, a.z), a]);
+      const line = new THREE.Line(f, frame[kind]);
+      line.raycast = () => {};
+      grp.add(line);
+    }
+    // betonvoeten op alle hekovergangen
+    const joints = ps.length ? [ps[0].a, ...ps.map((p) => p.b)] : [];
+    joints.forEach((q, i) => {
+      const p = ps[Math.min(i, ps.length - 1)];
+      const v = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.14, 0.22), voet);
+      v.position.copy(this.L(q[0], q[1], 0.07));
+      v.rotation.y = Math.atan2(p.b[1] - p.a[1], p.b[0] - p.a[0]) + Math.PI / 2; // voet dwars op het hek
+      v.userData = grp.userData;
+      grp.add(v);
+    });
   }
 
   private addSurvey(p: ProjectData, L: LayerState) {

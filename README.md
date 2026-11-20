@@ -73,6 +73,10 @@ Alles via de knoppen **Importeren** en **Tekenen** in de app (geen commando's no
 | KLIC-levering | De leverings-zip (IMKL 2.0, `GI_gebiedsinformatielevering_*.xml`). |
 | DXF-onderlegger | ASCII-DXF; plaatsing in RD, via het IFC-nulpunt of handmatig. |
 
+**Bouwhekken:** getekend als hele hekken van 3,50 × 2,00 m (zijden springen naar veelvouden van 3,50 m, Shift = vrij),
+met betonvoeten en poorten (standaard 2 hekken = 7,00 m). Hoekpunten, tussenpunten, poorten en het hele object zijn
+versleepbaar; dubbelklik op een hoekpunt verwijdert het.
+
 CSV: scheidingsteken `;` `,` tab of spatie, decimale komma of punt, kopregel optioneel; verwisselde X/Y worden herkend.
 Geïmporteerde gegevens worden in het projectbestand bewaard (en automatisch in de browser, IndexedDB).
 
