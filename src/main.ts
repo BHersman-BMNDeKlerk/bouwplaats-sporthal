@@ -144,12 +144,15 @@ async function start() {
     userLayer.apply(d, L, selectedManual);
     renderWarnings(data, boundary());
     const ov = store.data.overschrijvingen;
-    buildings?.apply(L, ov.gebouwen);
-    trees?.apply(L.bomen, ov.bomen);
-    obstacles.apply(L, ov.obstakels);
+    // plattegrond: 3D-gebouwen, bomen en obstakels uit
+    const plan = L.plattegrond;
+    const L3 = plan ? { ...L, gebouwen: false, obstakels: Object.fromEntries(Object.keys(L.obstakels).map((k) => [k, false])) } : L;
+    buildings?.apply(L3, ov.gebouwen);
+    trees?.apply(L.bomen && !plan, ov.bomen);
+    obstacles.apply(L3, ov.obstakels);
     const p = designPlacement();
     if (design && p) {
-      design.apply(p, L.ontwerp, L.ontwerpTransparant);
+      design.apply(p, L.ontwerp && !L.plattegrond, L.ontwerpTransparant);
       const key = JSON.stringify(p);
       if (key !== contourKey) {
         contourKey = key;
@@ -167,6 +170,7 @@ async function start() {
       root: $('layers'), data, state: L, hypsoRange: terrain.hypsoRange, presentClasses, obstacleCounts,
       designPlacementIsAuto: !store.data.ontwerpPlaatsing,
       onDesignPlacement: () => select({ kind: 'design', zone: null }),
+      onPlattegrond: (on) => { if (on) viewer.to2D(); },
       project: store.data,
       boundary: boundary(),
       onRefVisible: (kind, id, v) => {
@@ -809,6 +813,7 @@ async function start() {
     else if (key === 'z') zoomSporthal();
     else if (key === 'n') viewer.northUp();
     else if (key === 'm') (measure.active ? stopMeasure() : startMeasure());
+    else if (key === 'k') { L.plattegrond = !L.plattegrond; if (L.plattegrond) viewer.to2D(); terrain.redraw(L); applyScene(); renderPanel(); autosave(); status(L.plattegrond ? 'Plattegrond (kadasterkaart)' : 'Luchtfoto / 3D'); }
     else if (key === 'b') openModal(sourcesContent(m));
     else if (key === 'l') toggleLayers();
     else if (key === 's') {

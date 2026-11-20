@@ -19,6 +19,8 @@ export interface LayerState {
   obstakels: Record<string, boolean>;
   projectgebied: boolean;
   lagenVersie: number;
+  /** Plattegrond in de stijl van de kadasterkaart (2D, zonder luchtfoto/3D). */
+  plattegrond: boolean;
   /** Fase 2 */
   eigenPerceel: boolean;
   grens: boolean;
@@ -59,6 +61,7 @@ export function defaultLayers(): LayerState {
     obstakels: Object.fromEntries(OBSTACLE_CATEGORIES.map((c) => [c, true])),
     projectgebied: true,
     lagenVersie: 2,
+    plattegrond: false,
     eigenPerceel: true,
     grens: true,
     grensMaten: true,

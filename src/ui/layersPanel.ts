@@ -28,6 +28,7 @@ export interface LayersPanelOpts {
   project: ProjectData;
   boundary: ActiveBoundary;
   onRefVisible: (kind: 'klic' | 'dxf', id: string, v: boolean) => void;
+  onPlattegrond?: (on: boolean) => void;
   onOpen: (what: { kind: 'klicRef' | 'dxf'; id: string } | { kind: 'grens' } | { kind: 'codes' }) => void;
 }
 
@@ -64,6 +65,14 @@ export function renderLayersPanel(o: LayersPanelOpts) {
       o.designPlacementIsAuto ? 'Ligging automatisch uitgelijnd op het bestaande pand; peil 0 P volgens opgave. ' : 'Plaatsing handmatig ingesteld. ',
       h('a', { href: '#', onclick: (e: Event) => { e.preventDefault(); o.onDesignPlacement?.(); } }, 'Plaatsing bekijken / aanpassen')));
   }
+
+  // --- Plattegrond
+  root.append(h('h2', {}, 'Weergave'));
+  const segP = h('div', { class: 'seg', style: { marginLeft: 0 } });
+  for (const [v, label] of [[false, 'Luchtfoto / 3D'], [true, 'Plattegrond (kadaster)']] as [boolean, string][])
+    segP.append(h('button', { class: L.plattegrond === v ? 'on' : '', onclick: () => { L.plattegrond = v; o.onPlattegrond?.(v); changed('all')(); } }, label));
+  root.append(segP);
+  if (L.plattegrond) root.append(h('div', { class: 'note', style: { marginLeft: 0 } }, 'Plattegrond op basis van de kadasterkaart: perceelgrenzen met perceelnummers, gebouwomtrekken, straatnamen en huisnummers (sneltoets K). Eigen invoer, KLIC en het nieuwe pand blijven zichtbaar.'));
 
   // --- Ondergrond
   root.append(h('h2', {}, 'Ondergrond'));

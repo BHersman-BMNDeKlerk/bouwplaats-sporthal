@@ -286,9 +286,10 @@ export class TerrainLayer {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
-    const photo = L.luchtfoto && ch.ortho;
+    const plan = L.plattegrond;
+    const photo = !plan && L.luchtfoto && ch.ortho;
     if (photo) ctx.drawImage(ch.ortho!, 0, 0, W, H);
-    else { ctx.fillStyle = '#efeee9'; ctx.fillRect(0, 0, W, H); }
+    else { ctx.fillStyle = plan ? '#ffffff' : '#efeee9'; ctx.fillRect(0, 0, W, H); }
 
     const t = this.data.terrain;
     const gridSrc = (cv: HTMLCanvasElement) => {
@@ -312,7 +313,7 @@ export class TerrainLayer {
       for (let i = 1; i < l.length; i++) ctx.lineTo(X(l[i][0]), Y(l[i][1]));
     };
 
-    if (L.bgt) {
+    if (L.bgt && !plan) {
       ctx.globalAlpha = photo ? L.bgtDekking : 1;
       for (const p of ch.polys) {
         if (!L.bgtKlassen[p.cls]) continue;
@@ -338,13 +339,13 @@ export class TerrainLayer {
     }
 
     // hoogtekleur over luchtfoto/BGT heen (half transparant), zodat de ondergrond herkenbaar blijft
-    if (L.hoogtekleur && this.hypsoCanvas) {
+    if (!plan && L.hoogtekleur && this.hypsoCanvas) {
       ctx.globalAlpha = photo || L.bgt ? 0.7 : 1;
       gridSrc(this.hypsoCanvas);
       ctx.globalAlpha = 1;
     }
 
-    if (L.relief && this.hillCanvas) {
+    if (!plan && L.relief && this.hillCanvas) {
       ctx.globalCompositeOperation = 'multiply';
       ctx.globalAlpha = photo ? 0.5 : 0.9;
       gridSrc(this.hillCanvas);
@@ -352,7 +353,17 @@ export class TerrainLayer {
       ctx.globalCompositeOperation = 'source-over';
     }
 
-    if (L.bgt) {
+    if (plan) {
+      // plattegrond: gebouwomtrekken (BGT-pand) zoals op de kadasterkaart
+      ctx.beginPath();
+      for (const p of ch.polys) if (p.cls === 'pand_bgt') for (const poly of p.polys) for (const r of poly) ring(r);
+      ctx.fillStyle = '#f6eadb';
+      ctx.fill('evenodd');
+      ctx.strokeStyle = '#9c6b3c';
+      ctx.lineWidth = Math.max(1, 0.1 * ppm);
+      ctx.stroke();
+    }
+    if (L.bgt && !plan) {
       for (const l of ch.lines) {
         if (!L.bgtKlassen[l.cls]) continue;
         const st = CLASS_STYLES[l.cls];
@@ -400,7 +411,13 @@ export class TerrainLayer {
       ctx.stroke();
     }
 
-    if (L.percelen) {
+    if (plan) {
+      ctx.beginPath();
+      for (const l of this.parcelLines) path(l);
+      ctx.strokeStyle = '#1a1a1a';
+      ctx.lineWidth = Math.max(1.5, 0.12 * ppm);
+      ctx.stroke();
+    } else if (L.percelen) {
       ctx.beginPath();
       for (const l of this.parcelLines) path(l);
       ctx.strokeStyle = '#ffffff';
@@ -432,7 +449,7 @@ export class TerrainLayer {
       ctx.fillText(txt, 0, 0);
       ctx.restore();
     };
-    if (L.percelen && L.eigenPerceel && this.ownParcelHighlight && this.ownParcelRings.length) {
+    if ((L.percelen || plan) && L.eigenPerceel && this.ownParcelHighlight && this.ownParcelRings.length) {
       ctx.beginPath();
       for (const r of this.ownParcelRings) ring(r);
       ctx.strokeStyle = '#c2185b';
@@ -446,19 +463,19 @@ export class TerrainLayer {
       o({ ctx, bb, ppm, X, Y, ring, path, label }, L);
       ctx.restore();
     }
-    if (L.percelen && L.perceelnummers) {
+    if (plan || (L.percelen && L.perceelnummers)) {
       for (const p of this.parcels) {
         const pr = p.props;
         const x = pr.perceelnummer_plaatscoordinaat_x, y = pr.perceelnummer_plaatscoordinaat_y;
         if (x == null) continue;
-        label(`${pr.sectie ?? ''} ${pr.perceelnummer ?? ''}`.trim(), x, y, pr.perceelnummer_rotatie ?? 0, 1.1, '#8e0f45', '#ffffffdd');
+        label(plan ? String(pr.perceelnummer ?? '') : `${pr.sectie ?? ''} ${pr.perceelnummer ?? ''}`.trim(), x, y, pr.perceelnummer_rotatie ?? 0, plan ? 1.3 : 1.1, plan ? '#1a1a1a' : '#8e0f45', '#ffffffdd', plan);
       }
     }
-    if (L.bgt) {
+    if (L.bgt || plan) {
       for (const p of this.points) {
-        if (p.cls === 'straatnaam' && L.bgtKlassen.straatnaam && p.props.openbareruimtenaam)
-          label(p.props.openbareruimtenaam, p.x, p.y, p.props.hoek ?? 0, 2.4, '#1d1d1d', '#ffffffee', true);
-        if (p.cls === 'huisnummer' && L.bgtKlassen.huisnummer && p.props.tekst)
+        if (p.cls === 'straatnaam' && (plan || L.bgtKlassen.straatnaam) && p.props.openbareruimtenaam)
+          label(p.props.openbareruimtenaam, p.x, p.y, p.props.hoek ?? 0, 2.4, plan ? '#0d47a1' : '#1d1d1d', '#ffffffee', true);
+        if (p.cls === 'huisnummer' && (plan || L.bgtKlassen.huisnummer) && p.props.tekst)
           label(String(p.props.tekst), p.x, p.y, p.props.hoek ?? 0, 1.0, '#3b2a1a', '#ffffffcc');
       }
     }
