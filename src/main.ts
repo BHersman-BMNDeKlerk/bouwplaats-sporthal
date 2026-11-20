@@ -39,7 +39,7 @@ import { VEHICLES } from './vehicles/vehicles';
 import { bboxOf, type RouteObstacle } from './vehicles/sweep';
 import { manualObstacles } from './vehicles/obstacles';
 import type { PlanInput, PlanResult } from './vehicles/planner';
-import type { Sample } from './vehicles/kinematics';
+import { trailerAxle, type Leg, type Sample } from './vehicles/kinematics';
 import { RouteLayer, hitRoute, routesOverlay, ROUTE_KLEUR } from './scene/routeLayer';
 import { routePanel } from './ui/routePanel';
 import { HEIGHT } from './core/flatten';
@@ -298,41 +298,66 @@ async function start() {
   }
   let planning = false;
   if (import.meta.env.DEV) (window as any).__planInput = (v: any, plan: any) => planInput(v, plan);
-  async function planRoute(routeId: string | null, v: Route['voertuig'], plan: NonNullable<Route['plan']>) {
-    if (planning) return;
+  /** Plan (eventueel via tussenstops) en schrijf het resultaat in de route. */
+  async function planRoute(routeId: string | null, v: Route['voertuig'], plan: NonNullable<Route['plan']>): Promise<boolean> {
+    if (planning) return false;
     planning = true;
-    status(`Route zoeken voor ${v.naam}… (max. 15 s)`, 0);
     $('viewport').style.cursor = 'progress';
     const t0 = performance.now();
-    let res = await runPlanner(planInput(v, plan));
-    let snoei = false;
-    if (!res.ok && plan.kronen !== false && !/startpositie|eindpunt/.test(res.reden ?? '')) {
-      status(`Zonder clashes geen route – opnieuw met alleen boomstammen als obstakel…`, 0);
-      const r2 = await runPlanner(planInput(v, { ...plan, kronen: false }));
-      if (r2.ok) { res = r2; snoei = true; }
+    const doelen: [number, number, number | null][] = [...(plan.tussen ?? []), plan.eind];
+    let startPose: PlanInput['start'] = { x: plan.start[0], y: plan.start[1], theta: plan.start[2] };
+    const poses: PlanResult['poses'] = [];
+    const legs: Leg[] = [];
+    let wissels = 0, fout: string | null = null;
+    const verschoven: string[] = [];
+    for (let k = 0; k < doelen.length; k++) {
+      status(`Route zoeken voor ${v.naam}${doelen.length > 1 ? ` – deel ${k + 1} van ${doelen.length}` : ''}… (max. 15 s per deel)`, 0);
+      const inp = planInput(v, { ...plan, start: [startPose.x, startPose.y, startPose.theta], eind: doelen[k] });
+      inp.start = startPose;
+      const res = await runPlanner(inp);
+      if (!res.ok) { fout = (doelen.length > 1 ? `Deel ${k + 1} (naar ${k + 1 < doelen.length ? `tussenstop ${k + 1}` : 'het eindpunt'}): ` : '') + (res.reden ?? 'geen route'); break; }
+      if (res.startVerschoven && k === 0) verschoven.push(`start ${res.startVerschoven.toFixed(1).replace('.', ',')} m`);
+      if (res.eindVerschoven) verschoven.push(`${k + 1 < doelen.length ? `tussenstop ${k + 1}` : 'eind'} ${res.eindVerschoven.toFixed(1).replace('.', ',')} m`);
+      wissels += res.wissels + (k > 0 && legs.length && res.legs[0] && legs[legs.length - 1].richting !== res.legs[0].richting ? 1 : 0);
+      poses.push(...(poses.length ? res.poses.slice(1) : res.poses));
+      for (const l of res.legs) {
+        const last = legs[legs.length - 1];
+        if (last && last.richting === l.richting) last.punten.push(...l.punten.slice(1));
+        else legs.push({ richting: l.richting, punten: l.punten.slice() });
+      }
+      const e = res.poses[res.poses.length - 1];
+      startPose = { x: e.x, y: e.y, theta: e.theta, phi: e.phi };
     }
     planning = false;
     $('viewport').style.cursor = '';
     const sec = ((performance.now() - t0) / 1000).toFixed(1).replace('.', ',');
-    if (!res.ok) {
-      status(`Geen route gevonden (${sec} s)`);
-      info.open('Geen route gevonden', v.naam,
-        h('div', { class: 'note warn', style: { marginLeft: 0, background: '#fdecea', color: '#b71c1c' } }, res.reden ?? 'Onbekende reden'),
-        h('div', { class: 'note', style: { marginLeft: 0 } }, 'Tips: kies een andere eindrichting (of laat die vrij door na het eindpunt op Enter te drukken), verklein de marge, sta achteruitrijden toe, of controleer of er een obstakel (hek zonder poort, paaltjes, geparkeerde auto’s) in de weg staat. Muren, hekken, hagen en water uit de BGT tellen mee zolang die lagen aan staan.'),
-        routeId ? h('div', { class: 'btnrow' }, h('button', { onclick: () => select({ kind: 'route', id: routeId }) }, 'Terug naar de route')) : null);
-      return;
+    if (fout) {
+      status(`Geen route zonder obstakels gevonden (${sec} s)`);
+      const kroonMogelijk = plan.kronen !== false && !/startpositie|eindpunt|doorgang/.test(fout);
+      info.open('Geen route zonder obstakels', v.naam,
+        h('div', { class: 'note warn', style: { marginLeft: 0, background: '#fdecea', color: '#b71c1c' } }, fout),
+        h('div', { class: 'note', style: { marginLeft: 0 } }, 'Tips: kies een andere eindrichting (of laat die vrij door na het eindpunt op Enter te drukken), verklein de vrije ruimte, sta achteruitrijden toe, of haal een obstakel weg (hek zonder poort, paaltjes, geparkeerde auto’s, element). Muren, hekken, hagen en water uit de BGT tellen mee zolang die lagen aan staan. Lage boomkronen (onder de voertuighoogte) zijn ook een obstakel; pas zo nodig de kroonhoogte per boom aan.'),
+        h('div', { class: 'btnrow' },
+          kroonMogelijk ? h('button', { onclick: () => { void planRoute(routeId, v, { ...plan, kronen: false }); } }, 'Toch plannen onder lage boomkronen door (snoeien)') : null,
+          routeId ? h('button', { onclick: () => select({ kind: 'route', id: routeId }) }, 'Terug naar de route') : null));
+      return false;
     }
-    const infoTxt = `Automatisch gepland in ${sec} s · ${res.wissels} wissel(s) van rijrichting · marge ${plan.marge.toFixed(2).replace('.', ',')} m` +
-      (snoei ? ' · ⚠ Zonder clashes niet mogelijk: deze route gaat onder boomkronen door die lager zijn dan het voertuig (snoeien nodig – zie botsingen).' : plan.kronen === false ? ' · boomkronen genegeerd (alleen stammen).' : '');
-    const p2 = { ...plan, info: infoTxt };
+    const infoTxt = `Herberekend in ${sec} s${doelen.length > 1 ? ` via ${doelen.length - 1} tussenstop(s)` : ''} · ${wissels} wissel(s) van rijrichting · vrije ruimte ${plan.marge.toFixed(2).replace('.', ',')} m` +
+      (plan.kronen === false ? ' · ⚠ lage boomkronen genegeerd: snoeien nodig (zie botsingen).' : ' · vermijdt alle obstakels.') +
+      (verschoven.length ? ` · lag op een obstakel, verschoven naar de dichtstbijzijnde vrije plek: ${verschoven.join(', ')}.` : '');
+    // verschoven start/eind vastleggen, zodat opnieuw rekenen hetzelfde oplevert
+    const p0 = poses[0], pe = poses[poses.length - 1];
+    const vv = v.soort === 'oplegger';
+    const endRef = vv ? trailerAxle(v, { ...pe }) : [pe.x, pe.y];
+    const p2 = { ...plan, info: infoTxt, start: [p0.x, p0.y, p0.theta] as [number, number, number], eind: [endRef[0], endRef[1], plan.eind[2] == null ? null : vv ? pe.phi : pe.theta] as [number, number, number | null] };
     let id = routeId;
     if (id && store.data.routes.some((q) => q.id === id)) {
-      store.change('Route opnieuw gepland', (d) => { const x = d.routes.find((q) => q.id === id); if (x) { x.legs = res.legs; x.pad = res.poses; x.plan = p2; } });
+      store.change('Route herberekend', (d) => { const x = d.routes.find((q) => q.id === id); if (x) { x.legs = legs; x.pad = poses; x.plan = p2; } });
     } else {
-      const r = newRoute(v.id, res.legs);
+      const r = newRoute(v.id, legs);
       r.voertuig = { ...v };
       r.naam = `${v.naam} (automatisch)`;
-      r.pad = res.poses; r.plan = p2;
+      r.pad = poses; r.plan = p2;
       id = r.id;
       L.routes = true;
       store.change('Route automatisch gepland', (d) => { d.routes.push(r); });
@@ -340,6 +365,28 @@ async function start() {
     routePos = 0;
     select({ kind: 'route', id: id! });
     status(infoTxt);
+    return true;
+  }
+  /** Start, tussenstops en eind van een bestaande (ook zelf getekende) route, uit de gesimuleerde stand. */
+  function planFromRoute(r: Route): NonNullable<Route['plan']> {
+    if (r.plan) return r.plan;
+    const ss = routeEngine.result(r).sim.samples;
+    const v = r.voertuig, artic = v.soort === 'oplegger';
+    const doel = (s: Sample): [number, number, number] => { const ref = artic ? trailerAxle(v, s) : [s.x, s.y]; return [ref[0], ref[1], artic ? s.phi : s.theta]; };
+    const tussen: [number, number, number][] = [];
+    for (let i = 1; i < ss.length; i++) if (ss[i].leg !== ss[i - 1].leg) tussen.push(doel(ss[i - 1]));
+    return { start: [ss[0].x, ss[0].y, ss[0].theta], tussen, eind: doel(ss[ss.length - 1]), marge: 0.25, achteruit: true };
+  }
+  async function recalcRoute(id: string, opts: Partial<NonNullable<Route['plan']>> = {}): Promise<boolean> {
+    const r = store.data.routes.find((q) => q.id === id);
+    if (!r || !r.legs.length) return false;
+    return planRoute(r.id, r.voertuig, { ...planFromRoute(r), ...opts });
+  }
+  async function recalcAll() {
+    const ids = store.data.routes.filter((r) => r.zichtbaar && r.legs.length).map((r) => r.id);
+    let ok = 0;
+    for (const id of ids) if (await recalcRoute(id)) ok++;
+    status(`${ok} van ${ids.length} route(s) herberekend zonder obstakels${ok < ids.length ? ' – zie de melding bij de overige' : ''}`);
   }
   function startAutoRoute(vehicleId: string) {
     const v = VEHICLES.find((q) => q.id === vehicleId)!;
@@ -531,6 +578,7 @@ async function start() {
       craneStatus: (id) => { const w = craneWarn.get(id) ?? []; const ov = craneOverlap.filter((o) => o.a === id || o.b === id).length; return { conflicts: w.filter((q) => q.ernst === 'conflict').length, letop: w.filter((q) => q.ernst !== 'conflict').length + ov }; },
       onSelectCrane: (id) => select({ kind: 'crane', id }),
       onCraneVisible: (id, v) => { const k = store.data.kranen.find((q) => q.id === id); if (k) k.zichtbaar = v; overlayKey = ''; applyScene(); renderPanel(); autosave(); },
+      onRecalcRoutes: () => { void recalcAll(); },
       onSelectRoute: (id) => select({ kind: 'route', id }),
       onRouteVisible: (id, v) => { const r = store.data.routes.find((q) => q.id === id); if (r) r.zichtbaar = v; overlayKey = ''; applyScene(); renderPanel(); autosave(); },
       onClearBezet: () => store.change('Bezette parkeervakken gewist', (pd) => { pd.elementen = pd.elementen.filter((q) => !q.groep?.startsWith('bezet')); }),
@@ -687,7 +735,8 @@ async function start() {
       const p = routePanel(store, r, res, routePos, {
         addLeg: (richting) => addRouteLeg(r.id, richting),
         removeLastLeg: () => store.change('Routedeel verwijderd', (d) => { const x = d.routes.find((q) => q.id === r.id); if (x) { x.legs.pop(); x.pad = undefined; x.plan = undefined; } }),
-        replan: (marge, achteruit, kronen) => { const x = store.data.routes.find((q) => q.id === r.id); if (x?.plan) void planRoute(x.id, x.voertuig, { ...x.plan, marge, achteruit, kronen: kronen ?? x.plan.kronen }); },
+        replan: (marge, achteruit, kronen) => { void recalcRoute(r.id, { marge, achteruit, ...(kronen === undefined ? {} : { kronen }) }); },
+        recalc: () => { void recalcRoute(r.id); },
         remove: () => { store.change('Route verwijderd', (d) => { d.routes = d.routes.filter((q) => q.id !== r.id); }); select(null); },
         setPos: (v) => { routePos = v; routePlaying = false; showRoutePos(); },
         togglePlay: () => { if (!routePlaying && routePos >= res.sim.lengte - 0.01) routePos = 0; routePlaying = !routePlaying; return routePlaying; },

@@ -20,6 +20,8 @@ export interface RoutePanelActions {
   setDebug: (on: boolean) => void;
   focus: (x: number, y: number) => void;
   replan: (marge: number, achteruit: boolean, kronen?: boolean) => void;
+  /** Herbereken de route (ook een getekende route) zodat alle obstakels vermeden worden. */
+  recalc: () => void;
 }
 
 type NumKey = Exclude<{ [K in keyof VehicleSpec]-?: NonNullable<VehicleSpec[K]> extends number ? K : never }[keyof VehicleSpec], undefined>;
@@ -135,11 +137,15 @@ export function routePanel(store: ProjectStore, r: Route, res: RouteResult, pos:
       h('div', { class: 'frow' }, 'Vrije ruimte rondom (m)', iM),
       h('label', { class: 'lrow' }, cA, 'Achteruitrijden (steken) toestaan'),
       h('label', { class: 'lrow' }, cK, 'Lage boomkronen als obstakel (uit = alleen stammen, snoeien)'),
-      h('div', { class: 'btnrow' }, h('button', { class: 'primary', onclick: () => { const m = parseNum(iM.value); act.replan(m != null && !Number.isNaN(m) && m >= 0 ? m : r.plan!.marge, cA.checked, cK.checked); } }, '⚡ Opnieuw plannen')),
+      h('div', { class: 'btnrow' }, h('button', { class: 'primary', onclick: () => { const m = parseNum(iM.value); act.replan(m != null && !Number.isNaN(m) && m >= 0 ? m : r.plan!.marge, cA.checked, cK.checked); } }, '⚡ Herberekenen met deze instellingen')),
       h('div', { class: 'note', style: { marginLeft: 0 } }, 'Start (S) en eind (E) staan op de kaart. Na het verplaatsen van elementen, hekken of kranen: opnieuw plannen. Zelf een deel toevoegen maakt er een getekende route van.'));
   }
+  const recalcBtn = r.legs.length ? h('div', { class: 'btnrow', style: { marginTop: '2px' } },
+    h('button', { class: 'primary', style: { flex: '1', fontSize: '14px' }, title: 'Zoekt een nieuwe route van start naar eind (via het eind van elk rijdeel) die alle obstakels vermijdt', onclick: act.recalc }, '⚡ Herberekenen – obstakels vermijden'),
+  ) : null;
+  const recalcNote = r.legs.length && !r.plan ? h('div', { class: 'note', style: { marginLeft: 0 } }, `Gebruikt het begin, het eind${r.legs.length > 1 ? ` en de ${r.legs.length - 1} wisselpunt(en) tussen de rijdelen` : ''} van deze route en zoekt daartussen zelf een botsingsvrije weg.`) : null;
   const nodes = [
-    status, meldingen, botsingen, planBox,
+    recalcBtn, recalcNote, status, meldingen, botsingen, planBox,
     h('fieldset', {}, h('legend', {}, 'Route'),
       legs,
       h('div', { class: 'btnrow' },

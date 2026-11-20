@@ -17,7 +17,13 @@ export interface Route {
   /** Spookbeelden om de zoveel meter (0 = uit). */
   spook: number;
   /** Automatisch gepland: start/eind en instellingen. */
-  plan?: { start: [number, number, number]; eind: [number, number, number | null]; marge: number; achteruit: boolean; kronen?: boolean; info?: string };
+  plan?: {
+    start: [number, number, number];
+    eind: [number, number, number | null];
+    /** Tussenstops (eind van elk rijdeel bij een route met meerdere delen), in volgorde. */
+    tussen?: [number, number, number][];
+    marge: number; achteruit: boolean; kronen?: boolean; info?: string;
+  };
   /** Exact gepland traject (vervalt bij handmatige wijzigingen). */
   pad?: PlanPose[];
 }

@@ -68,3 +68,18 @@ describe('Routeplanner (Hybrid A*)', () => {
     expect(r.ok).toBe(true);
   }, 30000);
 });
+
+describe('Start of eind op een obstakel', () => {
+  it('schuift naar de dichtstbijzijnde vrije plek', () => {
+    const obs = [box('paal', -1, -6, 1, -1)]; // achterkant van de wagen staat erin
+    const r = plan({ v: veh('bakwagen-10'), start: { x: 0, y: -3, theta: Math.PI / 2 }, goal: { x: 0, y: 25, heading: Math.PI / 2 }, obstacles: obs, soft: [] });
+    expect(r.ok, r.reden).toBe(true);
+    expect(r.startVerschoven).toBeGreaterThan(0);
+    expect(routeConflicts(veh('bakwagen-10'), samplesFromPoses(r.poses).samples, obs)).toEqual([]);
+  });
+  it('start met afwijkende knikhoek (vervolgdeel van een oplegger)', () => {
+    const r = plan({ v: veh('trekker-oplegger'), start: { x: 0, y: 0, theta: 0.3, phi: 0 }, goal: { x: 40, y: 5, heading: 0 }, obstacles: [], soft: [] });
+    expect(r.ok, r.reden).toBe(true);
+    expect(r.poses[0].phi).toBe(0);
+  });
+});

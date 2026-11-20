@@ -225,7 +225,9 @@ export function simulate(v: VehicleSpec, legs: Leg[], opt: SimOptions = {}): Sim
     // begin van dit deel = huidige positie van het referentiepunt
     const ref0 = referencePoint(v, pose, leg.richting);
     let pts = leg.punten.slice();
-    if (Math.hypot(pts[0][0] - ref0[0], pts[0][1] - ref0[1]) > 0.05) pts.unshift(ref0);
+    // begint het getekende deel vlak bij het voertuig, dan start het bij het voertuig zelf (geen heen-en-weer)
+    while (pts.length > 1 && Math.hypot(pts[0][0] - ref0[0], pts[0][1] - ref0[1]) < 2) pts.shift();
+    pts.unshift(ref0);
     if (opt.afronden !== false) pts = filletPolyline(pts, minRefRadius(v, leg.richting) * 1.05);
     const P = makePath(pts);
     if (P.pts.length < 2 || P.total < 0.1) return;

@@ -90,8 +90,10 @@ export function helpContent(): Node {
     <li><b>⚡ Automatisch:</b> kies een voertuig en klik achtereenvolgens het startpunt (achteras), de rijrichting, het eindpunt
       (achteras; bij een oplegger de as van de oplegger) en de eindrichting. Enter na het eindpunt = vrije eindrichting.
       De app zoekt zelf een botsingsvrije route, met steken (achteruit) als dat nodig is, en vermijdt trottoir en groen waar het kan.
-      Lukt dat niet, dan probeert hij het met alleen boomstammen als obstakel en meldt hij welke kronen gesnoeid moeten worden.
-      Na wijzigingen op de bouwplaats: <i>Opnieuw plannen</i> in het paneel.</li>
+      Lukt dat niet, dan krijg je de reden en kun je kiezen om onder lage boomkronen door te plannen (snoeien).</li>
+    <li><b>⚡ Herberekenen – obstakels vermijden</b> (bovenaan het routepaneel): werkt voor elke route, ook zelf getekend en met
+      meerdere rijdelen. Begin, eind en de wisselpunten tussen de rijdelen blijven staan; daartussen zoekt de app een botsingsvrije weg.
+      Ligt een van die punten op een obstakel, dan schuift hij naar de dichtstbijzijnde vrije plek. Alle routes tegelijk: lagenpaneel → Routes.</li>
     <li>Scherpe hoeken in een zelf getekende lijn worden afgerond met de kleinst rijdbare straal (zoals een chauffeur de bocht neemt).</li>
     <li>Bouwhekken zijn een obstakel, poorten niet. Ook muren, hekken, hagen en water uit de BGT tellen mee.</li>
     <li>Kies een voertuig en teken de lijn van de <b>vooras</b> (klik punten, dubbelklik of Enter = klaar). Een nieuw deel

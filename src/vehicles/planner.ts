@@ -18,7 +18,7 @@ import type { RouteObstacle } from './sweep';
 export interface PlanInput {
   v: VehicleSpec;
   /** Start: achteras (trekker/voertuig), koers in rad. */
-  start: { x: number; y: number; theta: number };
+  start: { x: number; y: number; theta: number; phi?: number };
   /** Eind: achteras (star) of as van de oplegger; koers in rad of null (vrij). */
   goal: { x: number; y: number; heading: number | null };
   obstacles: RouteObstacle[];
@@ -44,6 +44,9 @@ export interface PlanResult {
   restAfstand: number;
   /** Exact traject (elke 0,25 m) met rijrichting: wordt direct als swept path gebruikt. */
   poses: PlanPose[];
+  /** Verschuiving van start/eind naar de dichtstbijzijnde vrije plek (m), als die op een obstakel lag. */
+  startVerschoven?: number;
+  eindVerschoven?: number;
 }
 export interface PlanPose { x: number; y: number; theta: number; phi: number; delta: number; dir: number }
 
@@ -245,10 +248,42 @@ export function plan(inp: PlanInput, grid?: Grid): PlanResult {
     return p;
   };
 
-  const start: Pose = { x: inp.start.x, y: inp.start.y, theta: inp.start.theta, phi: inp.start.theta, delta: 0 };
-  if (collide(start)) return fail('Het voertuig past niet op de startpositie (botst met een obstakel).');
+  let start: Pose = { x: inp.start.x, y: inp.start.y, theta: inp.start.theta, phi: inp.start.phi ?? inp.start.theta, delta: 0 };
+  // staat de start op een obstakel? zoek de dichtstbijzijnde vrije stand (langs de rijrichting, opzij, iets gedraaid)
+  let startVerschoven = 0, eindVerschoven = 0;
+  const offsets: [number, number, number, number][] = [];
+  for (let d = -10; d <= 10; d += 0.5) for (let l = -3; l <= 3; l += 0.5) for (const a of [0, -10, 10, -20, 20])
+    offsets.push([d, l, (a * Math.PI) / 180, Math.abs(d) + 2 * Math.abs(l) + Math.abs(a) / 10]);
+  offsets.sort((p, q) => p[3] - q[3]);
+  if (collide(start)) {
+    const c = Math.cos(start.theta), s0 = Math.sin(start.theta);
+    const found = offsets.find(([d, l, a]) => !collide({ ...start, x: start.x + d * c - l * s0, y: start.y + d * s0 + l * c, theta: start.theta + a, phi: start.phi + a }));
+    if (!found) return fail('Het voertuig past niet op de startpositie (botst met een obstakel), ook niet binnen 10 m daaromheen.');
+    const [d, l, a] = found;
+    start = { ...start, x: start.x + d * c - l * s0, y: start.y + d * s0 + l * c, theta: start.theta + a, phi: start.phi + a };
+    startVerschoven = Math.hypot(d, l);
+  }
   const refOf = (p: Pose): [number, number] => (artic ? trailerAxle(v, p) : [p.x, p.y]);
   const halfW = Math.max(v.breedte, artic ? v.opleggerBreedte ?? v.breedte : 0) / 2 + marge * 0.5;
+  {
+    const gi0 = cellOf(g, inp.goal.x, inp.goal.y);
+    if (gi0 < 0) return fail('Het eindpunt ligt buiten het rekengebied.');
+    if (g.dist[gi0] < halfW) {
+      // dichtstbijzijnde vrije rastercel (ruim genoeg voor de voertuigbreedte + 0,5 m) binnen 25 m
+      const R = Math.ceil(25 / g.res), gc = Math.floor((inp.goal.x - g.x0) / g.res), gr = Math.floor((inp.goal.y - g.y0) / g.res);
+      let bestD = Infinity, bx = 0, by = 0;
+      for (let dr = -R; dr <= R; dr++) for (let dc = -R; dc <= R; dc++) {
+        const d2 = dr * dr + dc * dc;
+        if (d2 >= bestD || d2 > R * R) continue;
+        const c = gc + dc, r = gr + dr;
+        if (c < 0 || r < 0 || c >= g.w || r >= g.h || g.dist[r * g.w + c] < halfW + 0.5) continue;
+        bestD = d2; bx = g.x0 + (c + 0.5) * g.res; by = g.y0 + (r + 0.5) * g.res;
+      }
+      if (!Number.isFinite(bestD)) return fail('Op het eindpunt is te weinig ruimte voor dit voertuig (botst met een obstakel), ook niet binnen 25 m daaromheen.');
+      eindVerschoven = Math.hypot(bx - inp.goal.x, by - inp.goal.y);
+      inp = { ...inp, goal: { ...inp.goal, x: bx, y: by } };
+    }
+  }
   const H = heuristicField(g, inp.goal.x, inp.goal.y, halfW);
   const hAt = (x: number, y: number) => {
     const cs = g.res * H.k;
@@ -266,9 +301,6 @@ export function plan(inp: PlanInput, grid?: Grid): PlanResult {
       const c = Math.floor((sr[0] - g.x0) / cs) + dx, r = Math.floor((sr[1] - g.y0) / cs) + dy;
       if (c >= 0 && r >= 0 && c < H.w && r < H.h && Number.isFinite(H.f[r * H.w + c])) reach = true;
     }
-    const gi = cellOf(g, inp.goal.x, inp.goal.y);
-    if (gi < 0) return fail('Het eindpunt ligt buiten het rekengebied.');
-    if (g.dist[gi] < halfW) return fail('Op het eindpunt is te weinig ruimte voor dit voertuig (botst met een obstakel).');
     if (!reach) return fail('Er is geen doorgang breed genoeg voor dit voertuig tussen start en eind.');
   }
   const steers = [-1, -0.5, 0, 0.5, 1].map((f) => f * dmax);
@@ -360,6 +392,6 @@ export function plan(inp: PlanInput, grid?: Grid): PlanResult {
     }
     const legsOk = legs.filter((l) => l.punten.length >= 2).map((l) => ({ ...l, punten: l.punten.map(([x, y]) => [Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000] as [number, number]) }));
     const r3 = (q: number) => Math.round(q * 1e4) / 1e4;
-    return { ok: true, legs: legsOk, expansies, lengte: (chain.length - 1) * STEP, wissels, restAfstand: rest, poses: dense.map((q) => ({ x: r3(q.x), y: r3(q.y), theta: r3(q.theta), phi: r3(q.phi), delta: r3(q.delta), dir: q.dir })) };
+    return { ok: true, legs: legsOk, expansies, lengte: (chain.length - 1) * STEP, wissels, restAfstand: rest, startVerschoven, eindVerschoven, poses: dense.map((q) => ({ x: r3(q.x), y: r3(q.y), theta: r3(q.theta), phi: r3(q.phi), delta: r3(q.delta), dir: q.dir })) };
   }
 }

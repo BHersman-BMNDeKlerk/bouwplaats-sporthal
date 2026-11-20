@@ -39,6 +39,7 @@ export interface LayersPanelOpts {
   /** Fase 4 */
   routeStatus: (r: Route) => { ok: boolean; botsingen: number };
   onSelectRoute: (id: string) => void;
+  onRecalcRoutes: () => void;
   onRouteVisible: (id: string, v: boolean) => void;
   /** Fase 5 */
   craneStatus: (id: string) => { conflicts: number; letop: number };
@@ -177,6 +178,7 @@ export function renderLayersPanel(o: LayersPanelOpts) {
     root.append(h('h2', {}, 'Routes (swept path)'));
     root.append(check('Routes tonen', () => L.routes, (v) => (L.routes = v), 'all'));
     root.append(check('Wielsporen', () => L.routeSporen, (v) => (L.routeSporen = v), 'terrain', { sub: true }));
+    root.append(h('div', { class: 'note' }, h('a', { href: '#', onclick: (ev: Event) => { ev.preventDefault(); o.onRecalcRoutes(); } }, '⚡ Alle routes herberekenen (obstakels vermijden)')));
     for (const r of o.project.routes) {
       const st = o.routeStatus(r);
       const cb = h('input', { type: 'checkbox', checked: r.zichtbaar, onchange: () => o.onRouteVisible(r.id, cb.checked) }) as HTMLInputElement;
