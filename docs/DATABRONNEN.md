@@ -99,4 +99,5 @@ RD x 105440–105770, y 424510–424850 (330 × 340 m). Aan te passen met `npm r
   (rotatie ≈ 5,0°, nulpunt RD x ≈ 105653,59 / y ≈ 424646,81). Gemiddelde afwijking 37 cm (75% binnen 0,5 m);
   de verschillen zitten in het ontwerp zelf (afgeronde hoeken, gevelopbouw). Controleren met de maatvoering
   op tekening; aanpassen kan in de app.
-- `data/ontwerp/` staat niet in git (afgeleid van het model van de architect; de repository is openbaar).
+- `data/ontwerp/model.json` staat in git: alleen contour, twee hoogtes en de plaatsing (geen detailgeometrie);
+  het IFC-bestand zelf niet.

@@ -44,7 +44,7 @@ function category(t: string): string {
 
 const txt = fs.readFileSync(file, 'latin1');
 const header = {
-  bestand: path.basename(file),
+  bestand: path.basename(file).replace(/^[0-9a-f]{8}-/, ''), // eventueel upload-voorvoegsel weglaten
   datum: txt.match(/FILE_NAME\('[^']*','([^']+)'/)?.[1] ?? '',
   auteur: txt.match(/FILE_NAME\('[^']*','[^']*',\('([^']*)'\)/)?.[1] ?? '',
   schema: txt.match(/FILE_SCHEMA\(\('([^']+)'/)?.[1] ?? '',

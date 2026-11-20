@@ -12,7 +12,7 @@ export function designSource(j: DesignModelFile): SourceInfo {
     nauwkeurigheid: `Alleen de buitenwerkse contour per hoogtezone (grijze blokken tot de hoogste dakrand, excl. installaties/PV). Plaatsing: ${j.plaatsingMethode}${
       j.plaatsingKwaliteit ? ` (gem. afwijking contour ↔ bestaand pand ${(j.plaatsingKwaliteit.gemAfwijking * 100).toFixed(0)} cm)` : ''
     }. De plaatsing is in de app aan te passen; controleer met de maatvoering op tekening.`,
-    licentie: 'Eigendom ontwerper – niet openbaar verspreiden',
+    licentie: 'Afgeleid van het ontwerpmodel (eigendom ontwerper); alleen contour en hoogtes opgenomen',
     status: 'ok',
   };
 }
