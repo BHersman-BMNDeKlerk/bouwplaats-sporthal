@@ -88,11 +88,15 @@ RD x 105440–105770, y 424510–424850 (330 × 340 m). Aan te passen met `npm r
 ### Ontwerpmodel (IFC, eigen invoer)
 - Huidig model: *240284 l 07-10-2026 l Gymzaal Latourpad.ifc* (VAN ES ARCHITECTEN, Archicad 28, IFC2X3),
   ingelezen met web-ifc via `npm run ifc`. Bouwlagen: fundering −0,80, BG 0, 1e verdieping 3,63, dak 6,64 m (t.o.v. 0 P).
+- **Alleen de buitenwerkse contour** wordt gebruikt (projectie van alle bouwdelen boven vloerpeil, 5 cm raster),
+  opgedeeld in hoogtezones en in de app getoond als grijze blokken tot de hoogste dakrand per zone. PV-panelen,
+  installaties en fundering tellen niet mee. Resultaat: laag deel 202 m² tot 4,21 m boven peil, zaal 298 m² tot
+  7,41 m boven peil (= +4,13 en +7,33 m NAP).
+- **Peil 0 P = −0,08 m NAP** (opgave werkvoorbereiding, november 2026).
 - Het model staat in een lokaal assenstelsel (mm). De IfcSite-coördinaat (51°49′32,8″ N, 4°47′43,9″ O) ligt
   ca. 9 km van de locatie en is dus niet bruikbaar.
-- **Plaatsing:** de buitencontour (projectie van alle elementen boven vloerpeil, 5 cm raster) is automatisch
-  uitgelijnd op de 3D BAG-footprint van pand 0505100000019476: rotatie 5,06°, nulpunt RD x 105653,59 /
-  y 424646,85. Gemiddelde afwijking 37 cm (75% binnen 0,5 m); de verschillen zitten in het ontwerp zelf
-  (afgeronde hoeken, gevelopbouw). **Peil 0 P is een aanname** (maaiveld 3D BAG, −0,43 m NAP) tot de waarde
-  uit de tekening is ingevuld.
-- Niet openbaar: het model is eigendom van de ontwerper; `data/ontwerp/` staat niet in git.
+- **Ligging:** de contour is automatisch uitgelijnd op de 3D BAG-footprint van pand 0505100000019476
+  (rotatie ≈ 5,0°, nulpunt RD x ≈ 105653,59 / y ≈ 424646,81). Gemiddelde afwijking 37 cm (75% binnen 0,5 m);
+  de verschillen zitten in het ontwerp zelf (afgeronde hoeken, gevelopbouw). Controleren met de maatvoering
+  op tekening; aanpassen kan in de app.
+- `data/ontwerp/` staat niet in git (afgeleid van het model van de architect; de repository is openbaar).

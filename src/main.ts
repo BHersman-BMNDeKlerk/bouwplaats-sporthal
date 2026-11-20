@@ -10,7 +10,6 @@ import { loadAll, type LoadedData } from './data/loader';
 import { BuildingsLayer, type BuildingObj } from './scene/buildingsLayer';
 import { DesignLayer } from './scene/designLayer';
 import { placeRings, type Placement } from './data/ifcGeom';
-import { DESIGN_CATEGORIES } from './data/design';
 import { ObstaclesLayer, type Obstacle } from './scene/obstaclesLayer';
 import { TerrainLayer } from './scene/terrainLayer';
 import { effectiveTree, TreesLayer } from './scene/treesLayer';
@@ -27,7 +26,7 @@ type Selection =
   | { kind: 'tree'; index: number }
   | { kind: 'obstacle'; id: string }
   | { kind: 'terrain'; x: number; y: number }
-  | { kind: 'design'; categorie: string | null }
+  | { kind: 'design'; zone: number | null }
   | null;
 
 async function start() {
@@ -57,7 +56,7 @@ async function start() {
   if (trees) viewer.scene.add(trees.group);
   const obstacles = new ObstaclesLayer(data, frame, (x, y) => terrain.heightAt(x, y));
   viewer.scene.add(obstacles.group);
-  const design = data.design ? new DesignLayer(data.design.model, data.design.bin, frame) : null;
+  const design = data.design ? new DesignLayer(data.design.model, frame) : null;
   if (design) viewer.scene.add(design.group);
 
   // --- project
@@ -93,7 +92,7 @@ async function start() {
     obstacles.apply(L, ov.obstakels);
     const p = designPlacement();
     if (design && p) {
-      design.apply(p, L.ontwerp, L.ontwerpCategorieen, L.ontwerpTransparant);
+      design.apply(p, L.ontwerp, L.ontwerpTransparant);
       const key = JSON.stringify(p);
       if (key !== contourKey) {
         contourKey = key;
@@ -110,7 +109,7 @@ async function start() {
     renderLayersPanel({
       root: $('layers'), data, state: L, hypsoRange: terrain.hypsoRange, presentClasses, obstacleCounts,
       designPlacementIsAuto: !store.data.ontwerpPlaatsing,
-      onDesignPlacement: () => select({ kind: 'design', categorie: null }),
+      onDesignPlacement: () => select({ kind: 'design', zone: null }),
       onChange: (_s, what) => {
         if (what === 'terrain' || what === 'all') terrain.redraw(L);
         if (what === 'scene' || what === 'all') applyScene();
@@ -158,7 +157,7 @@ async function start() {
     if (s.kind === 'building') { const b = buildings?.byId.get(s.id); if (b) info.showBuilding(b); }
     else if (s.kind === 'tree' && trees) info.showTree(trees.trees[s.index]);
     else if (s.kind === 'obstacle') { const o = obstacles.byId.get(s.id); if (o) info.showObstacle(o); }
-    else if (s.kind === 'design' && design) info.showDesign(design.model, s.categorie, designMaaiveld());
+    else if (s.kind === 'design' && design) info.showDesign(design.model, s.zone, designMaaiveld());
     else if (s.kind === 'terrain') {
       const bgt = terrain.bgtAt(s.x, s.y, L);
       info.showTerrain(s.x, s.y, terrain.heightAt(s.x, s.y), terrain.measuredAt(s.x, s.y), bgt, L.percelen ? terrain.parcelAt(s.x, s.y) : null);
@@ -172,7 +171,7 @@ async function start() {
     | { kind: 'building'; b: BuildingObj; point: THREE.Vector3 }
     | { kind: 'tree'; index: number; point: THREE.Vector3 }
     | { kind: 'obstacle'; o: Obstacle; point: THREE.Vector3 }
-    | { kind: 'design'; categorie: string; point: THREE.Vector3 }
+    | { kind: 'design'; zone: number; point: THREE.Vector3 }
     | { kind: 'terrain'; point: THREE.Vector3 };
   const pick = (ev: PointerEvent | MouseEvent): Hit | null => {
     const rect = viewer.renderer.domElement.getBoundingClientRect();
@@ -191,7 +190,7 @@ async function start() {
       if (o.userData.kind === 'building') return { kind: 'building', b: buildings!.byId.get(o.userData.id)!, point: hit.point };
       if (o.userData.kind === 'tree' && hit.instanceId != null) return { kind: 'tree', index: hit.instanceId, point: hit.point };
       if (o.userData.kind === 'obstacle') return { kind: 'obstacle', o: obstacles.byId.get(o.userData.id)!, point: hit.point };
-      if (o.userData.kind === 'design') return { kind: 'design', categorie: o.userData.categorie, point: hit.point };
+      if (o.userData.kind === 'design') return { kind: 'design', zone: o.userData.zone, point: hit.point };
     }
     return tp ? { kind: 'terrain', point: tp } : null;
   };
@@ -246,9 +245,10 @@ async function start() {
     }
     if (hit.kind === 'design' && design) {
       const p = designPlacement()!;
-      return `<div class="t">Nieuw pand (ontwerp IFC)</div><div>${escapeHtml(DESIGN_CATEGORIES[hit.categorie]?.label ?? hit.categorie)}</div>
-        <div>Hoogte hier: ${fmtNAP(hit.point.y)} · hoogste punt ${fmtNAP(p.peil + design.model.zmax)}</div>
-        <div style="color:#bbb">Peil 0 P = ${fmtNAP(p.peil)}${store.data.ontwerpPlaatsing ? '' : ' (aanname)'}</div>`;
+      const z = design.model.zones[hit.zone];
+      return `<div class="t">Nieuw pand (ontwerp)</div>
+        <div>Bovenkant: ${fmtNAP(p.peil + z.top)} · ${fmtM(z.top)} boven peil</div>
+        <div style="color:#bbb">Peil 0 P = ${fmtNAP(p.peil)}</div>`;
     }
     if (hit.kind === 'obstacle') {
       const o = hit.o;
@@ -273,7 +273,7 @@ async function start() {
     if (hit.kind === 'building') select({ kind: 'building', id: hit.b.rec.id });
     else if (hit.kind === 'tree') select({ kind: 'tree', index: hit.index });
     else if (hit.kind === 'obstacle') select({ kind: 'obstacle', id: hit.o.id });
-    else if (hit.kind === 'design') select({ kind: 'design', categorie: hit.categorie });
+    else if (hit.kind === 'design') select({ kind: 'design', zone: hit.zone });
     else { const rd = frame.toRD(hit.point.x, hit.point.y, hit.point.z); select({ kind: 'terrain', x: rd.x, y: rd.y }); }
   });
 

@@ -16,7 +16,7 @@ export interface LoadedData {
   percelen: GeoJSON | null;
   grenzen: GeoJSON | null;
   trees: TreesFile | null;
-  design: { model: DesignModelFile; bin: ArrayBuffer } | null;
+  design: { model: DesignModelFile } | null;
 }
 
 export interface GeoJSON {
@@ -84,8 +84,8 @@ export async function loadAll(progress: (msg: string) => void): Promise<LoadedDa
   tasks.push((async () => {
     let model: DesignModelFile;
     try { model = await json<DesignModelFile>('ontwerp/model.json'); } catch { return; }
-    progress('Ontwerpmodel (IFC) laden…');
-    out.design = { model, bin: await bin(model.bin) };
+    if (!Array.isArray(model.zones)) return; // oud formaat: opnieuw importeren met npm run ifc
+    out.design = { model };
     manifest.bronnen = [...manifest.bronnen.filter((b) => b.id !== 'ontwerp'), designSource(model)];
   })());
   const res = await Promise.allSettled(tasks);

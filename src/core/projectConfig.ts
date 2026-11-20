@@ -16,6 +16,8 @@ export const PROJECT = {
     { x: 105546, y: 424738 },
     { x: 105571, y: 424613 },
   ] as RDPoint[],
+  /** Peil 0 P van het nieuwe pand in m NAP (opgave werkvoorbereiding, nov. 2026). */
+  peilNAP: -0.08,
   /** Marge rond de kernpunten in meters (afgesproken: 100 m). */
   marge: 100,
 };

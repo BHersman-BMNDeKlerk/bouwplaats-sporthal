@@ -168,13 +168,13 @@ export interface DesignModelFile {
   project: string;
   geimporteerd: string;
   bouwlagen: { naam: string; hoogte: number }[];
-  zmin: number;
+  /** Hoogste punt van het bouwwerk (excl. installaties), m t.o.v. peil. */
   zmax: number;
-  categorieen: { id: string; objecten: number; posOffset: number; posCount: number; idxOffset: number; idxCount: number }[];
   /** Buitencontour (projectie van boven), IFC x/y in m. */
   contour: number[][][];
+  /** Hoogtezones: buitencontour per dakhoogte (top in m t.o.v. peil). */
+  zones: { rings: number[][][]; top: number; oppervlakte: number }[];
   plaatsingAuto: { x: number; y: number; rotatie: number; peil: number };
   plaatsingMethode: string;
   plaatsingKwaliteit: { gemAfwijking: number; dekking: number } | null;
-  bin: string;
 }

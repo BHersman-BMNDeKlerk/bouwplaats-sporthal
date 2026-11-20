@@ -44,10 +44,10 @@ export function helpContent(): Node {
       Ook boomhoogte, kroonstraal en onderkant kroon en de hoogte van palen en borden zijn aan te passen.</li>
   </ul>
   <h3>Ontwerpmodel (IFC)</h3>
-  <p>Het nieuwe pand van de architect staat onder <b>Ontwerp (IFC)</b>: in 3D (per onderdeel aan/uit, of transparant)
-  en als paarse buitencontour op het maaiveld. Klik op het pand voor peil, bouwlagen en hoogtes in m NAP.
-  De plaatsing (RD-positie van het IFC-nulpunt, rotatie en peil 0 P) is automatisch bepaald door de contour uit te
-  lijnen op het bestaande pand; vul bij voorkeur de waarden uit de tekening in. Een nieuw model inlezen:
+  <p>Het nieuwe pand staat onder <b>Ontwerp (IFC)</b> als grijze blokken (buitenwerkse contour, per deel tot de
+  hoogste dakrand) en als paarse buitencontour op het maaiveld. Klik op het pand voor peil (0 P = −0,08 m NAP),
+  bovenkanten en bouwlagen in m NAP. De ligging (RD-positie van het IFC-nulpunt en rotatie) is automatisch bepaald
+  door de contour uit te lijnen op het bestaande pand; controleer die met de maatvoering op tekening. Een nieuw model inlezen:
   <code>npm run ifc -- "model.ifc"</code>.</p>
   <h3>Lagen</h3>
   <p>Links zet je lagen aan of uit: luchtfoto, BGT-vlakken per functie (rijbaan, voetpad, parkeervak, …), reliëf,

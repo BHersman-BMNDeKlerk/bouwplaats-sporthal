@@ -322,3 +322,138 @@ export function fitToFootprint(src: number[][][], target: number[][][], cap = 1.
   const rot = ((best.rot % 360) + 360) % 360;
   return { plaatsing: { x: best.tx, y: best.ty, rotatie: rot }, gemAfwijking: best.c, dekking: near / pts.length };
 }
+
+// ---------------------------------------------------------------------------
+// Hoogtezones: het pand als grijze blokken (buitencontour per dakhoogte)
+// ---------------------------------------------------------------------------
+
+export interface HeightZone {
+  /** Ringen (buitenring linksom, gaten rechtsom), IFC x/y in m. */
+  rings: number[][][];
+  /** Hoogste punt binnen de zone (m t.o.v. IFC z = 0, d.w.z. t.o.v. peil). */
+  top: number;
+  oppervlakte: number;
+}
+
+/**
+ * Hoogste z per rastercel uit 3D-driehoeken (x,y,z × 3 per driehoek).
+ * Verticale vlakken (van boven gezien een lijn) tellen mee via hun randen.
+ */
+export function topRaster(tris: Float64Array | Float32Array | number[], res: number, pad = 4): Mask & { top: Float32Array } {
+  const flat: number[] = [];
+  for (let t = 0; t < tris.length; t += 3) flat.push(tris[t], tris[t + 1]);
+  const m = rasterizeTriangles(flat, res, pad);
+  const top = new Float32Array(m.w * m.h).fill(-Infinity);
+  const set = (c: number, r: number, z: number) => {
+    if (c >= 0 && r >= 0 && c < m.w && r < m.h && z > top[r * m.w + c]) top[r * m.w + c] = z;
+  };
+  for (let t = 0; t < tris.length; t += 9) {
+    const P = [0, 1, 2].map((k) => [(tris[t + 3 * k] - m.x0) / res, (tris[t + 3 * k + 1] - m.y0) / res, tris[t + 3 * k + 2]]);
+    const [a, b, c] = P;
+    const area = (b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1]);
+    if (Math.abs(area) < 1e-9) {
+      for (const [p, q] of [[a, b], [b, c], [c, a]]) {
+        const n = Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) * 2) + 1;
+        for (let k = 0; k <= n; k++) set(Math.floor(p[0] + ((q[0] - p[0]) * k) / n), Math.floor(p[1] + ((q[1] - p[1]) * k) / n), Math.max(p[2], q[2]));
+      }
+      continue;
+    }
+    const r0 = Math.floor(Math.min(a[1], b[1], c[1])), r1 = Math.ceil(Math.max(a[1], b[1], c[1]));
+    const c0 = Math.floor(Math.min(a[0], b[0], c[0])), c1 = Math.ceil(Math.max(a[0], b[0], c[0]));
+    for (let r = r0; r <= r1; r++)
+      for (let cc = c0; cc <= c1; cc++) {
+        const px = cc + 0.5, py = r + 0.5;
+        const w0 = ((b[0] - px) * (c[1] - py) - (c[0] - px) * (b[1] - py)) / area;
+        const w1 = ((c[0] - px) * (a[1] - py) - (a[0] - px) * (c[1] - py)) / area;
+        const w2 = 1 - w0 - w1;
+        if (w0 < -1e-6 || w1 < -1e-6 || w2 < -1e-6) continue;
+        set(cc, r, w0 * a[2] + w1 * b[2] + w2 * c[2]);
+      }
+  }
+  return { ...m, top };
+}
+
+/**
+ * Deel de buitencontour op in zones met (ongeveer) gelijke dakhoogte.
+ * Dakhoogtes worden geclusterd (tolerantie `tol` m); zones kleiner dan
+ * `minAandeel` van het totaal worden bij de buurzone gevoegd.
+ * De hoogte van een zone is het hoogste punt erin (dakrand/acroterie).
+ */
+export function heightZones(tris: Float64Array | Float32Array | number[], res = 0.1, tol = 0.75, minAandeel = 0.05, closeCells = 4): HeightZone[] {
+  const t = topRaster(tris, res, closeCells + 2);
+  const { w, h } = t;
+  const filled = closeMask({ ...t, data: t.data }, closeCells).data;
+  // dakhoogteclusters (gewogen naar oppervlak)
+  const vals: number[] = [];
+  for (let i = 0; i < w * h; i++) if (filled[i] && Number.isFinite(t.top[i])) vals.push(t.top[i]);
+  vals.sort((a, b) => a - b);
+  const groups: { lo: number; hi: number; n: number }[] = [];
+  for (const v of vals) {
+    const g = groups[groups.length - 1];
+    if (g && v - g.hi <= tol / 4) { g.hi = v; g.n++; } else groups.push({ lo: v, hi: v, n: 1 });
+  }
+  // voeg naburige groepen samen tot clusters met spreiding ≤ tol
+  const clusters: { lo: number; hi: number; n: number }[] = [];
+  for (const g of groups) {
+    const c = clusters[clusters.length - 1];
+    if (c && g.hi - c.lo <= tol) { c.hi = g.hi; c.n += g.n; } else clusters.push({ ...g });
+  }
+  const big = clusters.filter((c) => c.n >= vals.length * minAandeel);
+  if (!big.length) return [];
+  const levelOf = (z: number) => {
+    let best = 0, d = Infinity;
+    big.forEach((c, i) => {
+      const dd = z < c.lo ? c.lo - z : z > c.hi ? z - c.hi : 0;
+      if (dd < d) { d = dd; best = i; }
+    });
+    return best;
+  };
+  // label per cel; cellen zonder hoogte (gesloten kieren) krijgen het label van een buur
+  let lab = new Int16Array(w * h).fill(-1);
+  for (let i = 0; i < w * h; i++) if (filled[i] && Number.isFinite(t.top[i])) lab[i] = levelOf(t.top[i]);
+  const raw = lab.slice();
+  for (let it = 0; it < 50; it++) {
+    let changed = false;
+    const next = lab.slice();
+    for (let r = 0; r < h; r++)
+      for (let c = 0; c < w; c++) {
+        const i = r * w + c;
+        if (!filled[i] || lab[i] >= 0) continue;
+        for (const [dr, dc] of [[0, 1], [1, 0], [0, -1], [-1, 0]]) {
+          const j = (r + dr) * w + c + dc;
+          if (r + dr >= 0 && r + dr < h && c + dc >= 0 && c + dc < w && lab[j] >= 0) { next[i] = lab[j]; changed = true; break; }
+        }
+      }
+    lab = next;
+    if (!changed) break;
+  }
+  // meerderheidsfilter (5×5) tegen spikkels; hoge dakranden langs een lage zone blijven zo bij de hoge zone
+  const sm = lab.slice();
+  for (let r = 0; r < h; r++)
+    for (let c = 0; c < w; c++) {
+      const i = r * w + c;
+      if (lab[i] < 0) continue;
+      const cnt = new Map<number, number>();
+      for (let dr = -2; dr <= 2; dr++)
+        for (let dc = -2; dc <= 2; dc++) {
+          const rr = r + dr, cc = c + dc;
+          if (rr < 0 || cc < 0 || rr >= h || cc >= w) continue;
+          const l = lab[rr * w + cc];
+          if (l >= 0) cnt.set(l, (cnt.get(l) ?? 0) + 1);
+        }
+      let best = lab[i], bn = 0;
+      for (const [l, n] of cnt) if (n > bn) { bn = n; best = l; }
+      sm[i] = best;
+    }
+  const zones: HeightZone[] = [];
+  big.forEach((_, k) => {
+    const data = new Uint8Array(w * h);
+    let top = -Infinity;
+    // hoogte alleen uit cellen die zelf tot deze hoogteklasse horen (niet uit een hogere buurmuur)
+    for (let i = 0; i < w * h; i++) if (sm[i] === k) { data[i] = 1; if (raw[i] === k) top = Math.max(top, t.top[i]); }
+    const rings = traceRings({ ...t, data }).map((r) => simplifyRing(r, res * 1.2)).filter((r) => Math.abs(signedArea(r)) >= 1);
+    const opp = rings.reduce((s, r) => s + signedArea(r), 0);
+    if (opp >= 1) zones.push({ rings: rings.sort((a, b) => signedArea(b) - signedArea(a)), top: Math.round(top * 100) / 100, oppervlakte: Math.round(opp * 10) / 10 });
+  });
+  return zones.sort((a, b) => a.top - b.top);
+}

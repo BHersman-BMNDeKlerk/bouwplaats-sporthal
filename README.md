@@ -30,10 +30,11 @@ npm run data
 npm run ifc -- "pad/naar/model.ifc"
 ```
 
-Het model wordt omgezet naar `data/ontwerp/` (geometrie per onderdeel + buitencontour) en verschijnt in de
-app onder **Ontwerp (IFC)**. Heeft het model geen bruikbare georeferentie (zoals de huidige Archicad-export),
+Van het model wordt alleen de buitenwerkse contour gebruikt: per hoogtezone een grijs blok tot de hoogste
+dakrand (zonder PV-panelen en installaties), opgeslagen in `data/ontwerp/model.json`. Het verschijnt in de
+app onder **Ontwerp (IFC)**. Peil 0 P = −0,08 m NAP (instelbaar in `src/core/projectConfig.ts` en in de app). Heeft het model geen bruikbare georeferentie (zoals de huidige Archicad-export),
 dan wordt de buitencontour automatisch uitgelijnd op de 3D BAG-footprint van de sporthal. Controleer en
-corrigeer de plaatsing in de app (X/Y van het IFC-nulpunt in RD, rotatie, peil 0 P in m NAP); de
+corrigeer de ligging in de app (X/Y van het IFC-nulpunt in RD, rotatie, peil 0 P in m NAP); de
 correctie wordt in het projectbestand bewaard.
 
 > `data/ontwerp/` staat in `.gitignore`: het model is eigendom van de architect en de GitHub-repository is
@@ -85,7 +86,7 @@ Alle eigen invoer staat in één JSON-bestand (`Opslaan`/`Openen`), met o.a.:
     "bomen":     { "bgt:G0505.…": { "hoogte": 9, "kroonOnderkant": 4.5 } },
     "obstakels": { "paal:G0505.…": { "hoogte": 7 } }
   },
-  "ontwerpPlaatsing": { "x": 105653.595, "y": 424646.852, "rotatie": 5.062, "peil": -0.43 },
+  "ontwerpPlaatsing": { "x": 105653.595, "y": 424646.852, "rotatie": 5.062, "peil": -0.08 },
   "weergave": { "lagen": { … } },
   "elementen": [], "routes": [], "kranen": []   // fase 3–5
 }

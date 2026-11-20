@@ -3,9 +3,9 @@
  *
  *   npm run ifc -- "pad/naar/model.ifc"
  *
- * Schrijft data/ontwerp/model.json (metadata, categorieën, buitencontour,
- * automatische plaatsing) en data/ontwerp/model.bin (geometrie), en werkt
- * data/manifest.json bij. Het IFC-bestand zelf wordt niet gekopieerd.
+ * Schrijft data/ontwerp/model.json: metadata, bouwlagen, de buitenwerkse
+ * contour en hoogtezones (het pand wordt in de app als grijze blokken getoond,
+ * zonder detailgeometrie) en de plaatsing. Het IFC-bestand zelf wordt niet gekopieerd.
  *
  * Plaatsing: IFC-modellen staan meestal in een lokaal assenstelsel. Als het
  * model geen bruikbare georeferentie heeft, wordt de buitencontour automatisch
@@ -16,7 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as WebIFC from 'web-ifc';
 import { PROJECT } from '../src/core/projectConfig';
-import { fitToFootprint, footprintFromTriangles, signedArea, type Placement } from '../src/data/ifcGeom';
+import { fitToFootprint, footprintFromTriangles, heightZones, signedArea, type Placement } from '../src/data/ifcGeom';
 import type { BuildingsFile } from '../src/data/types';
 import type { DesignModelFile } from '../src/data/types';
 
@@ -62,16 +62,15 @@ const api = new WebIFC.IfcAPI();
 await api.Init();
 const modelID = api.OpenModel(new Uint8Array(fs.readFileSync(file)), { COORDINATE_TO_ORIGIN: false });
 
-const cats = new Map<string, { pos: number[]; idx: number[]; n: number }>();
+let nObjecten = 0;
 const proj: number[] = []; // 2D-driehoeken voor de contour
-let zmin = Infinity, zmax = -Infinity;
+const proj3: number[] = []; // 3D-driehoeken (x,y,z) voor de hoogtezones
+let zmax = -Infinity;
 api.StreamAllMeshes(modelID, (mesh) => {
-  const tname = api.GetNameFromTypeCode(api.GetLineType(modelID, mesh.expressID));
-  const cat = category(tname);
-  if (!cat) return;
-  if (!cats.has(cat)) cats.set(cat, { pos: [], idx: [], n: 0 });
-  const C = cats.get(cat)!;
-  C.n++;
+  const cat = category(api.GetNameFromTypeCode(api.GetLineType(modelID, mesh.expressID)));
+  // alleen het bouwwerk zelf: geen fundering (onder maaiveld), installaties/PV-panelen of ruimtes
+  if (!cat || cat === 'fundering' || cat === 'installaties') return;
+  nObjecten++;
   const geoms = mesh.geometries;
   for (let i = 0; i < geoms.size(); i++) {
     const pg = geoms.get(i);
@@ -79,7 +78,6 @@ api.StreamAllMeshes(modelID, (mesh) => {
     const v = api.GetVertexArray(g.GetVertexData(), g.GetVertexDataSize());
     const ix = api.GetIndexArray(g.GetIndexData(), g.GetIndexDataSize());
     const m = pg.flatTransformation;
-    const base = C.pos.length / 3;
     const loc: number[] = [];
     for (let k = 0; k < v.length; k += 6) {
       const x = v[k], y = v[k + 1], z = v[k + 2];
@@ -87,30 +85,29 @@ api.StreamAllMeshes(modelID, (mesh) => {
       const X = m[0] * x + m[4] * y + m[8] * z + m[12];
       const Yup = m[1] * x + m[5] * y + m[9] * z + m[13];
       const Zw = m[2] * x + m[6] * y + m[10] * z + m[14];
-      const P = [Math.round(X * 1000) / 1000, Math.round(-Zw * 1000) / 1000, Math.round(Yup * 1000) / 1000];
-      C.pos.push(P[0], P[1], P[2]);
-      loc.push(P[0], P[1], P[2]);
-      if (cat !== 'fundering') { zmin = Math.min(zmin, P[2]); zmax = Math.max(zmax, P[2]); }
+      loc.push(X, -Zw, Yup);
+      zmax = Math.max(zmax, Yup);
     }
-    for (let k = 0; k < ix.length; k++) C.idx.push(base + ix[k]);
-    if (cat !== 'fundering' && cat !== 'installaties') {
-      for (let k = 0; k < ix.length; k += 3) {
-        const a = ix[k] * 3, b = ix[k + 1] * 3, c = ix[k + 2] * 3;
-        if (Math.max(loc[a + 2], loc[b + 2], loc[c + 2]) < 0.05) continue; // onder vloerpeil
-        proj.push(loc[a], loc[a + 1], loc[b], loc[b + 1], loc[c], loc[c + 1]);
-      }
+    for (let k = 0; k < ix.length; k += 3) {
+      const a = ix[k] * 3, b = ix[k + 1] * 3, c = ix[k + 2] * 3;
+      if (Math.max(loc[a + 2], loc[b + 2], loc[c + 2]) < 0.05) continue; // onder vloerpeil
+      proj.push(loc[a], loc[a + 1], loc[b], loc[b + 1], loc[c], loc[c + 1]);
+      proj3.push(loc[a], loc[a + 1], loc[a + 2], loc[b], loc[b + 1], loc[b + 2], loc[c], loc[c + 1], loc[c + 2]);
     }
   }
 });
 api.CloseModel(modelID);
 
-// --- buitencontour
-console.log(`  ${[...cats.values()].reduce((s, c) => s + c.idx.length / 3, 0)} driehoeken; contour bepalen…`);
+// --- buitencontour en hoogtezones (grijze blokken)
+console.log(`  ${nObjecten} bouwdelen, ${proj.length / 6} driehoeken; contour en hoogtezones bepalen…`);
 const contour = footprintFromTriangles(proj, 0.05, 4, 2);
 const outer = contour.filter((r) => signedArea(r) > 0);
 console.log(`  buitencontour: ${outer.length} ring(en), ${outer.reduce((s, r) => s + signedArea(r), 0).toFixed(1)} m²`);
+const zones = heightZones(proj3, 0.1);
+for (const z of zones) console.log(`  zone: ${z.oppervlakte} m², hoogste punt ${z.top.toFixed(2)} m boven peil`);
 
-// --- plaatsing: uitlijnen op bestaande footprint
+// --- plaatsing: uitlijnen op bestaande footprint, peil uit projectgegevens
+const peil = PROJECT.peilNAP;
 let plaatsing: Placement | null = null;
 let methode = '';
 let kwaliteit: { gemAfwijking: number; dekking: number } | null = null;
@@ -120,50 +117,34 @@ if (fs.existsSync(gebFile)) {
   const sh = g.gebouwen.find((b) => b.bagId === PROJECT.bagPandId);
   if (sh && sh.footprint.length) {
     const fit = fitToFootprint(outer.length ? outer : contour, sh.footprint);
-    plaatsing = { ...fit.plaatsing, peil: sh.maaiveld ?? 0 };
+    plaatsing = { ...fit.plaatsing, peil };
     kwaliteit = { gemAfwijking: fit.gemAfwijking, dekking: fit.dekking };
-    methode = `automatisch uitgelijnd op de 3D BAG-footprint van pand ${PROJECT.bagPandId}; peil = maaiveld 3D BAG (aanname)`;
-    console.log(`  plaatsing: x ${fit.plaatsing.x.toFixed(2)}, y ${fit.plaatsing.y.toFixed(2)}, rotatie ${fit.plaatsing.rotatie.toFixed(2)}°`);
+    methode = `ligging automatisch uitgelijnd op de 3D BAG-footprint van pand ${PROJECT.bagPandId}; peil 0 P = ${peil} m NAP (opgave werkvoorbereiding)`;
+    console.log(`  plaatsing: x ${fit.plaatsing.x.toFixed(2)}, y ${fit.plaatsing.y.toFixed(2)}, rotatie ${fit.plaatsing.rotatie.toFixed(2)}°, peil ${peil} m NAP`);
     console.log(`  gem. afwijking contour ↔ bestaand: ${(fit.gemAfwijking * 100).toFixed(0)} cm; ${(fit.dekking * 100).toFixed(0)}% binnen 0,5 m`);
   }
 }
 if (!plaatsing) {
-  plaatsing = { x: 0, y: 0, rotatie: 0, peil: 0 };
+  plaatsing = { x: 0, y: 0, rotatie: 0, peil };
   methode = 'geen automatische plaatsing mogelijk – stel de plaatsing in de app in';
 }
 
-// --- wegschrijven
+// --- wegschrijven (alleen contour en blokken; geen detailgeometrie)
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
-const order = ['wanden', 'vloeren', 'constructie', 'kozijnen', 'onderdelen', 'overig', 'installaties', 'fundering'];
-const chunks: Buffer[] = [];
-let offset = 0;
-const categorieen: DesignModelFile['categorieen'] = [];
-for (const key of order) {
-  const c = cats.get(key);
-  if (!c || !c.idx.length) continue;
-  const pos = Buffer.from(new Float32Array(c.pos).buffer);
-  const idx = Buffer.from(new Uint32Array(c.idx).buffer);
-  categorieen.push({ id: key, objecten: c.n, posOffset: offset, posCount: c.pos.length, idxOffset: offset + pos.length, idxCount: c.idx.length });
-  chunks.push(pos, idx);
-  offset += pos.length + idx.length;
-}
-fs.writeFileSync(path.join(OUT, 'model.bin'), Buffer.concat(chunks));
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
+const ringR = (r: number[][]) => r.map(([x, y]) => [r3(x), r3(y)]);
 const json: DesignModelFile = {
   ...header,
   geimporteerd: new Date().toISOString(),
   bouwlagen: storeys,
-  zmin: r3(zmin),
   zmax: r3(zmax),
-  categorieen,
-  contour: contour.map((r) => r.map(([x, y]) => [r3(x), r3(y)])),
-  plaatsingAuto: { ...plaatsing, x: r3(plaatsing.x), y: r3(plaatsing.y), rotatie: Math.round(plaatsing.rotatie * 1000) / 1000, peil: r3(plaatsing.peil) },
+  contour: contour.map(ringR),
+  zones: zones.map((z) => ({ rings: z.rings.map(ringR), top: z.top, oppervlakte: z.oppervlakte })),
+  plaatsingAuto: { x: r3(plaatsing.x), y: r3(plaatsing.y), rotatie: r3(plaatsing.rotatie), peil: r3(plaatsing.peil) },
   plaatsingMethode: methode,
   plaatsingKwaliteit: kwaliteit,
-  bin: 'ontwerp/model.bin',
 };
 fs.writeFileSync(path.join(OUT, 'model.json'), JSON.stringify(json));
-console.log(`  → data/ontwerp/model.json, model.bin (${(offset / 1024 / 1024).toFixed(1)} MB)`);
-
-console.log('  Klaar. Herlaad de app (het model staat los van data/manifest.json en niet in git).');
+console.log(`  → data/ontwerp/model.json (${(fs.statSync(path.join(OUT, 'model.json')).size / 1024).toFixed(0)} kB)`);
+console.log('  Klaar. Herlaad de app.');

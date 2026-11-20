@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fitToFootprint, footprintFromTriangles, minAreaRect, placePoint, placeRings, signedArea } from '../src/data/ifcGeom';
+import { fitToFootprint, footprintFromTriangles, heightZones, minAreaRect, placePoint, placeRings, signedArea } from '../src/data/ifcGeom';
 
 /** Rechthoek als 2 driehoeken (x,y-paren). */
 const rect = (x0: number, y0: number, x1: number, y1: number) => [x0, y0, x1, y0, x1, y1, x0, y0, x1, y1, x0, y1];
@@ -64,5 +64,35 @@ describe('automatisch uitlijnen op bestaande footprint', () => {
     const f = fitToFootprint(ontwerp, bestaand);
     expect(Math.abs(f.plaatsing.rotatie - truth.rotatie)).toBeLessThan(0.1);
     expect(Math.hypot(f.plaatsing.x - truth.x, f.plaatsing.y - truth.y)).toBeLessThan(0.05);
+  });
+});
+
+/** Doos als 3D-driehoeken (dak + 4 gevels). */
+function box(x0: number, y0: number, x1: number, y1: number, z: number): number[] {
+  const t: number[] = [];
+  const quad = (a: number[], b: number[], c: number[], d: number[]) => t.push(...a, ...b, ...c, ...a, ...c, ...d);
+  quad([x0, y0, z], [x1, y0, z], [x1, y1, z], [x0, y1, z]);
+  quad([x0, y0, 0], [x1, y0, 0], [x1, y0, z], [x0, y0, z]);
+  quad([x1, y0, 0], [x1, y1, 0], [x1, y1, z], [x1, y0, z]);
+  quad([x1, y1, 0], [x0, y1, 0], [x0, y1, z], [x1, y1, z]);
+  quad([x0, y1, 0], [x0, y0, 0], [x0, y0, z], [x0, y1, z]);
+  return t;
+}
+
+describe('hoogtezones (grijze blokken)', () => {
+  it('laag deel (4,2 m) naast hoge zaal (7,4 m): twee zones met eigen hoogte', () => {
+    const tris = [...box(-32, -15, -14, 0, 4.2), ...box(-14, -17, 0, 0, 7.4)];
+    const z = heightZones(tris, 0.1);
+    expect(z.length).toBe(2);
+    expect(z[0].top).toBeCloseTo(4.2, 1); // niet de hoge scheidingsmuur
+    expect(z[1].top).toBeCloseTo(7.4, 1);
+    expect(z[0].oppervlakte).toBeCloseTo(18 * 15, -1);
+    expect(z[1].oppervlakte).toBeCloseTo(14 * 17, -1);
+  });
+
+  it('één hoogte: één zone', () => {
+    const z = heightZones([...box(0, 0, 20, 10, 6), ...box(0, 0, 20, 10, 6.2)], 0.1);
+    expect(z.length).toBe(1);
+    expect(z[0].top).toBeCloseTo(6.2, 1);
   });
 });

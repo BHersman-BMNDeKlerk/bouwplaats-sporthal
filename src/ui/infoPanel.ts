@@ -2,7 +2,6 @@
 import { fmtM, fmtNAP, fmtRD, rdToWgs84 } from '../core/coords';
 import type { ProjectStore } from '../core/project';
 import { describe } from '../data/bgt';
-import { DESIGN_CATEGORIES } from '../data/design';
 import type { Placement } from '../data/ifcGeom';
 import type { DesignModelFile } from '../data/types';
 import { effectiveHeights, relative, type HeightOverride } from '../data/heights';
@@ -186,7 +185,7 @@ export class InfoPanel {
   }
 
   // ------------------------------------------------------------------ ontwerp (IFC)
-  showDesign(m: DesignModelFile, categorie: string | null, maaiveld: number | null) {
+  showDesign(m: DesignModelFile, zone: number | null, maaiveld: number | null) {
     const cur = this.store.data.ontwerpPlaatsing;
     const p: Placement = cur ?? m.plaatsingAuto;
     const isAuto = !cur;
@@ -202,14 +201,15 @@ export class InfoPanel {
       this.store.change('Plaatsing ontwerpmodel aangepast', (d) => { d.ontwerpPlaatsing = { x, y, rotatie, peil }; });
     };
     for (const i of [iX, iY, iR, iP]) i.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') save(); ev.stopPropagation(); });
-    const top = p.peil + m.zmax;
     const k = m.plaatsingKwaliteit;
     this.open('Nieuw pand (ontwerp IFC)', `${m.project || m.bestand} · ${m.auteur} · modeldatum ${m.datum.slice(0, 10)}`,
-      categorie ? h('div', { class: 'kv' }, h('b', {}, 'Onderdeel: '), DESIGN_CATEGORIES[categorie]?.label ?? categorie) : null,
       h('table', {},
         h('tr', {}, h('th', {}, ''), h('th', { style: { textAlign: 'right' } }, 'm NAP'), h('th', { style: { textAlign: 'right' } }, 't.o.v. maaiveld')),
-        h('tr', {}, h('td', {}, 'Peil (IFC z = 0)', isAuto ? h('span', { class: 'badge aanname' }, 'aanname') : null), h('td', { class: 'num' }, fmtNAP(p.peil)), h('td', { class: 'num' }, fmtM(relative(p.peil, maaiveld)))),
-        h('tr', {}, h('td', {}, 'Hoogste punt model'), h('td', { class: 'num' }, fmtNAP(top)), h('td', { class: 'num' }, fmtM(relative(top, maaiveld)))),
+        h('tr', {}, h('td', {}, 'Peil 0 P'), h('td', { class: 'num' }, fmtNAP(p.peil)), h('td', { class: 'num' }, fmtM(relative(p.peil, maaiveld)))),
+        ...m.zones.map((z, i) => h('tr', { style: i === zone ? { background: '#fff4d6' } : {} },
+          h('td', {}, `Bovenkant ${m.zones.length > 1 ? (i === m.zones.length - 1 ? 'hoog deel' : i === 0 ? 'laag deel' : `deel ${i + 1}`) : 'pand'}`, h('div', { style: { fontSize: '11px', color: '#777' } }, `${z.oppervlakte.toLocaleString('nl-NL')} m² · ${fmtM(z.top)} boven peil`)),
+          h('td', { class: 'num' }, fmtNAP(p.peil + z.top)), h('td', { class: 'num' }, fmtM(relative(p.peil + z.top, maaiveld))))),
+        h('tr', {}, h('td', { colspan: 3, style: { fontSize: '12px', color: '#5f6670', paddingTop: '8px' } }, 'Bouwlagen uit het model:')),
         ...m.bouwlagen.map((b) => h('tr', {}, h('td', {}, b.naam), h('td', { class: 'num' }, fmtNAP(p.peil + b.hoogte)), h('td', { class: 'num' }, fmtM(relative(p.peil + b.hoogte, maaiveld))))),
       ),
       h('div', { class: 'kv' }, h('b', {}, 'Maaiveld ter plaatse (AHN): '), fmtNAP(maaiveld)),
@@ -217,7 +217,7 @@ export class InfoPanel {
         h('legend', {}, 'Plaatsing in RD / NAP'),
         h('div', { class: 'note', style: { marginLeft: 0 } },
           isAuto
-            ? `Automatisch: buitencontour uitgelijnd op het bestaande pand (gem. afwijking ${k ? Math.round(k.gemAfwijking * 100) : '?'} cm). Het peil is een aanname (maaiveld 3D BAG). Vul bij voorkeur de waarden uit de tekening in.`
+            ? `Ligging automatisch: buitencontour uitgelijnd op het bestaande pand (gem. afwijking ${k ? Math.round(k.gemAfwijking * 100) : '?'} cm). Peil 0 P = ${fmtNAP(m.plaatsingAuto.peil)} volgens opgave. Controleer de ligging met de maatvoering op tekening.`
             : 'Handmatig ingestelde plaatsing.'),
         h('div', { class: 'frow' }, 'X nulpunt IFC (RD, m)', iX),
         h('div', { class: 'frow' }, 'Y nulpunt IFC (RD, m)', iY),
@@ -227,7 +227,7 @@ export class InfoPanel {
           h('button', { class: 'primary', onclick: save }, 'Toepassen'),
           !isAuto ? h('button', { onclick: () => this.store.change('Plaatsing ontwerp automatisch', (d) => { delete d.ontwerpPlaatsing; }) }, 'Terug naar automatisch') : null),
         msg),
-      h('div', { class: 'note', style: { marginLeft: 0 } }, `Bestand: ${m.bestand} (${m.schema}, ${m.applicatie}). Het model is eigendom van de ontwerper.`),
+      h('div', { class: 'note', style: { marginLeft: 0 } }, `Weergave: alleen de buitenwerkse contour als grijze blokken tot de hoogste dakrand per deel (zonder PV-panelen en installaties). Bron: ${m.bestand} (${m.schema}, ${m.applicatie}).`),
     );
   }
 
