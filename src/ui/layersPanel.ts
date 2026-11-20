@@ -1,6 +1,7 @@
 /** Lagenpaneel: aan/uit per laag en weergave-instellingen. */
 import { OBSTACLE_CATEGORIES, type LayerState, type SporthalMode } from '../core/layers';
 import { CLASS_STYLES } from '../data/bgt';
+import { DESIGN_CATEGORIES } from '../data/design';
 import type { LoadedData } from '../data/loader';
 import { HEIGHT_STOPS } from '../scene/buildingsLayer';
 import { HYPSO_STOPS } from '../scene/terrainLayer';
@@ -16,6 +17,9 @@ export interface LayersPanelOpts {
   presentClasses: Set<string>;
   obstacleCounts: Record<string, number>;
   onChange: (s: LayerState, what: 'terrain' | 'scene' | 'all') => void;
+  /** Open het plaatsingsvenster van het ontwerpmodel. */
+  onDesignPlacement?: () => void;
+  designPlacementIsAuto?: boolean;
 }
 
 export function renderLayersPanel(o: LayersPanelOpts) {
@@ -38,6 +42,26 @@ export function renderLayersPanel(o: LayersPanelOpts) {
     return [h('div', { class: 'legend-ramp', style: { background: `linear-gradient(90deg, ${grad})` } }),
       h('div', { class: 'legend-scale' }, h('span', {}, min.toLocaleString('nl-NL')), h('span', {}, max.toLocaleString('nl-NL')))];
   };
+
+  // --- Ontwerp (IFC)
+  const dm = data.design?.model;
+  if (dm) {
+    root.append(h('h2', {}, 'Ontwerp (IFC)'));
+    root.append(check(`Nieuw pand in 3D`, () => L.ontwerp, (v) => (L.ontwerp = v), 'scene', { swatch: swatch('#d9c7a7') }));
+    root.append(check('Buitencontour op maaiveld', () => L.ontwerpContour, (v) => (L.ontwerpContour = v), 'terrain', { swatch: swatch(undefined, '#7b1fa2') }));
+    root.append(check('Transparant', () => L.ontwerpTransparant, (v) => (L.ontwerpTransparant = v), 'scene', { sub: true }));
+    const det = h('details', { class: 'sub' }, h('summary', {}, 'Onderdelen'));
+    for (const c of dm.categorieen) {
+      const st = DESIGN_CATEGORIES[c.id];
+      if (!st) continue;
+      det.append(check(`${st.label} (${c.objecten})`, () => L.ontwerpCategorieen[c.id] ?? st.standaardAan, (v) => (L.ontwerpCategorieen[c.id] = v), 'scene', { sub: true, swatch: swatch(st.kleur) }));
+    }
+    root.append(det);
+    root.append(h('div', { class: 'note' }, `${dm.project || dm.bestand} · ${dm.auteur} · ${dm.datum.slice(0, 10)}`));
+    root.append(h('div', { class: o.designPlacementIsAuto ? 'note warn' : 'note' },
+      o.designPlacementIsAuto ? '⚠ Plaatsing automatisch uitgelijnd op het bestaande pand; peil is een aanname. ' : 'Plaatsing handmatig ingesteld. ',
+      h('a', { href: '#', onclick: (e: Event) => { e.preventDefault(); o.onDesignPlacement?.(); } }, 'Plaatsing bekijken / aanpassen')));
+  }
 
   // --- Ondergrond
   root.append(h('h2', {}, 'Ondergrond'));

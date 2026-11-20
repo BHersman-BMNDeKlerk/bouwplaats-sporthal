@@ -2,6 +2,9 @@
 import { fmtM, fmtNAP, fmtRD, rdToWgs84 } from '../core/coords';
 import type { ProjectStore } from '../core/project';
 import { describe } from '../data/bgt';
+import { DESIGN_CATEGORIES } from '../data/design';
+import type { Placement } from '../data/ifcGeom';
+import type { DesignModelFile } from '../data/types';
 import { effectiveHeights, relative, type HeightOverride } from '../data/heights';
 import type { BuildingObj } from '../scene/buildingsLayer';
 import type { Obstacle } from '../scene/obstaclesLayer';
@@ -179,6 +182,52 @@ export class InfoPanel {
       h('fieldset', {}, h('legend', {}, 'Hoogte aanpassen (m)'), h('div', { class: 'frow' }, 'Hoogte boven maaiveld', iH),
         h('div', { class: 'btnrow' }, h('button', { class: 'primary', onclick: save }, 'Toepassen'),
           ov ? h('button', { onclick: () => this.store.change('Obstakel hersteld', (dd) => { delete dd.overschrijvingen.obstakels[o.id]; }) }, 'Herstel') : null)),
+    );
+  }
+
+  // ------------------------------------------------------------------ ontwerp (IFC)
+  showDesign(m: DesignModelFile, categorie: string | null, maaiveld: number | null) {
+    const cur = this.store.data.ontwerpPlaatsing;
+    const p: Placement = cur ?? m.plaatsingAuto;
+    const isAuto = !cur;
+    const fmt = (v: number, d = 3) => v.toFixed(d).replace('.', ',');
+    const inp = (v: number, d = 3) => h('input', { type: 'text', inputmode: 'decimal', value: fmt(v, d) });
+    const iX = inp(p.x), iY = inp(p.y), iR = inp(p.rotatie, 3), iP = inp(p.peil, 3);
+    const msg = h('div', { class: 'note', style: { marginLeft: 0 } });
+    const save = () => {
+      const v = [iX, iY, iR, iP].map((i) => parseNum(i.value));
+      if (v.some((x) => x == null || Number.isNaN(x))) { msg.textContent = 'Vul vier geldige getallen in.'; return; }
+      const [x, y, rotatie, peil] = v as number[];
+      if (Math.hypot(x - m.plaatsingAuto.x, y - m.plaatsingAuto.y) > 1000) { msg.textContent = 'Positie ligt meer dan 1 km van de locatie – controleer de RD-coördinaten.'; return; }
+      this.store.change('Plaatsing ontwerpmodel aangepast', (d) => { d.ontwerpPlaatsing = { x, y, rotatie, peil }; });
+    };
+    for (const i of [iX, iY, iR, iP]) i.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') save(); ev.stopPropagation(); });
+    const top = p.peil + m.zmax;
+    const k = m.plaatsingKwaliteit;
+    this.open('Nieuw pand (ontwerp IFC)', `${m.project || m.bestand} · ${m.auteur} · modeldatum ${m.datum.slice(0, 10)}`,
+      categorie ? h('div', { class: 'kv' }, h('b', {}, 'Onderdeel: '), DESIGN_CATEGORIES[categorie]?.label ?? categorie) : null,
+      h('table', {},
+        h('tr', {}, h('th', {}, ''), h('th', { style: { textAlign: 'right' } }, 'm NAP'), h('th', { style: { textAlign: 'right' } }, 't.o.v. maaiveld')),
+        h('tr', {}, h('td', {}, 'Peil (IFC z = 0)', isAuto ? h('span', { class: 'badge aanname' }, 'aanname') : null), h('td', { class: 'num' }, fmtNAP(p.peil)), h('td', { class: 'num' }, fmtM(relative(p.peil, maaiveld)))),
+        h('tr', {}, h('td', {}, 'Hoogste punt model'), h('td', { class: 'num' }, fmtNAP(top)), h('td', { class: 'num' }, fmtM(relative(top, maaiveld)))),
+        ...m.bouwlagen.map((b) => h('tr', {}, h('td', {}, b.naam), h('td', { class: 'num' }, fmtNAP(p.peil + b.hoogte)), h('td', { class: 'num' }, fmtM(relative(p.peil + b.hoogte, maaiveld))))),
+      ),
+      h('div', { class: 'kv' }, h('b', {}, 'Maaiveld ter plaatse (AHN): '), fmtNAP(maaiveld)),
+      h('fieldset', {},
+        h('legend', {}, 'Plaatsing in RD / NAP'),
+        h('div', { class: 'note', style: { marginLeft: 0 } },
+          isAuto
+            ? `Automatisch: buitencontour uitgelijnd op het bestaande pand (gem. afwijking ${k ? Math.round(k.gemAfwijking * 100) : '?'} cm). Het peil is een aanname (maaiveld 3D BAG). Vul bij voorkeur de waarden uit de tekening in.`
+            : 'Handmatig ingestelde plaatsing.'),
+        h('div', { class: 'frow' }, 'X nulpunt IFC (RD, m)', iX),
+        h('div', { class: 'frow' }, 'Y nulpunt IFC (RD, m)', iY),
+        h('div', { class: 'frow' }, 'Rotatie (°, linksom)', iR),
+        h('div', { class: 'frow' }, 'Peil 0 P (m NAP)', iP),
+        h('div', { class: 'btnrow' },
+          h('button', { class: 'primary', onclick: save }, 'Toepassen'),
+          !isAuto ? h('button', { onclick: () => this.store.change('Plaatsing ontwerp automatisch', (d) => { delete d.ontwerpPlaatsing; }) }, 'Terug naar automatisch') : null),
+        msg),
+      h('div', { class: 'note', style: { marginLeft: 0 } }, `Bestand: ${m.bestand} (${m.schema}, ${m.applicatie}). Het model is eigendom van de ontwerper.`),
     );
   }
 

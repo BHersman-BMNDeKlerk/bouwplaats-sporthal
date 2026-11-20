@@ -1,1 +1,1 @@
-{"x0":105440.25,"y0":424849.75,"res":0.5,"width":660,"height":680,"data":"terrein.f32","mask":"terrein_masker.u8","min":-1.01,"max":1.58,"bron":"AHN4 (PDOK WCS) (2020, 2021 en 2022)"}
+{"x0":105440.25,"y0":424849.75,"res":0.5,"width":660,"height":680,"data":"terrein.f32","mask":"terrein_masker.u8","min":-1.22,"max":3.23,"bron":"AHN5 (2024)"}

@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit -p .",
     "data": "tsx scripts/fetch-data.ts && tsx scripts/build-data.ts",
     "data:fetch": "tsx scripts/fetch-data.ts",
-    "data:build": "tsx scripts/build-data.ts"
+    "data:build": "tsx scripts/build-data.ts",
+    "ifc": "tsx scripts/import-ifc.ts"
   },
   "author": "",
   "license": "UNLICENSED",
@@ -26,7 +27,8 @@
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
-    "vitest": "^5.1.1"
+    "vitest": "^5.1.1",
+    "web-ifc": "^0.0.80"
   },
   "private": true,
   "type": "module"

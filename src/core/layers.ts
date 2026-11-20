@@ -1,5 +1,6 @@
 /** Laagzichtbaarheid en weergave-instellingen (persisteert in het projectbestand). */
 import { CLASS_STYLES } from '../data/bgt';
+import { DESIGN_CATEGORIES } from '../data/design';
 
 export type SporthalMode = 'normaal' | 'transparant' | 'verborgen';
 
@@ -18,6 +19,10 @@ export interface LayerState {
   bomen: boolean;
   obstakels: Record<string, boolean>;
   projectgebied: boolean;
+  ontwerp: boolean;
+  ontwerpContour: boolean;
+  ontwerpTransparant: boolean;
+  ontwerpCategorieen: Record<string, boolean>;
 }
 
 export const OBSTACLE_CATEGORIES = ['Palen & masten', 'Borden', 'Kasten', 'Straatmeubilair', 'Overig'] as const;
@@ -40,6 +45,10 @@ export function defaultLayers(): LayerState {
     bomen: true,
     obstakels: Object.fromEntries(OBSTACLE_CATEGORIES.map((c) => [c, true])),
     projectgebied: true,
+    ontwerp: true,
+    ontwerpContour: true,
+    ontwerpTransparant: false,
+    ontwerpCategorieen: Object.fromEntries(Object.entries(DESIGN_CATEGORIES).map(([k, v]) => [k, v.standaardAan])),
   };
 }
 

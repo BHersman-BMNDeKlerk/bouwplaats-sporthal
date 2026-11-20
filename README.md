@@ -24,6 +24,21 @@ De brondata staat al in `data/`. Opnieuw ophalen of bijwerken (internet nodig, �
 npm run data
 ```
 
+### Ontwerpmodel (IFC) inladen
+
+```bash
+npm run ifc -- "pad/naar/model.ifc"
+```
+
+Het model wordt omgezet naar `data/ontwerp/` (geometrie per onderdeel + buitencontour) en verschijnt in de
+app onder **Ontwerp (IFC)**. Heeft het model geen bruikbare georeferentie (zoals de huidige Archicad-export),
+dan wordt de buitencontour automatisch uitgelijnd op de 3D BAG-footprint van de sporthal. Controleer en
+corrigeer de plaatsing in de app (X/Y van het IFC-nulpunt in RD, rotatie, peil 0 P in m NAP); de
+correctie wordt in het projectbestand bewaard.
+
+> `data/ontwerp/` staat in `.gitignore`: het model is eigendom van de architect en de GitHub-repository is
+> openbaar. Op een andere computer het commando hierboven opnieuw draaien met het IFC-bestand.
+
 ### Versie voor collega's (statisch, offline)
 
 ```bash
@@ -51,6 +66,7 @@ npm run preview
 | Ongedaan / opnieuw | `Ctrl+Z` / `Ctrl+Y` |
 | Opslaan / openen | `Ctrl+S` / `Ctrl+O` (één projectbestand `.json`) |
 | Bovenaanzicht / 3D / sporthal | `T` / `P` / `Z` |
+| Plaatsing ontwerpmodel | klik op het nieuwe pand → paneel rechts |
 | Sporthal normaal → transparant → verborgen | `S` |
 | Handleiding / bronnen | `F1` / `B` |
 
@@ -69,6 +85,7 @@ Alle eigen invoer staat in één JSON-bestand (`Opslaan`/`Openen`), met o.a.:
     "bomen":     { "bgt:G0505.…": { "hoogte": 9, "kroonOnderkant": 4.5 } },
     "obstakels": { "paal:G0505.…": { "hoogte": 7 } }
   },
+  "ontwerpPlaatsing": { "x": 105653.595, "y": 424646.852, "rotatie": 5.062, "peil": -0.43 },
   "weergave": { "lagen": { … } },
   "elementen": [], "routes": [], "kranen": []   // fase 3–5
 }
@@ -104,7 +121,7 @@ data/               verwerkte brondata (in git, zodat de app direct werkt)
 npm test
 ```
 
-Dekt o.a. coördinaattransformatie (RD ⇄ lokaal, RD ⇄ WGS84), tegelindeling, terrein-interpolatie en
+Dekt o.a. coördinaattransformatie, IFC-contour en automatisch uitlijnen, (RD ⇄ lokaal, RD ⇄ WGS84), tegelindeling, terrein-interpolatie en
 -bemonstering, 3D BAG-verwerking (met een echte 3D BAG-respons van de sporthal), hoogte-overschrijving,
 BGT-classificatie, boomdetectie en undo/redo. In latere fases komen swept path en lasttabel-interpolatie erbij.
 

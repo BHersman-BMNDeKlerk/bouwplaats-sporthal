@@ -43,6 +43,12 @@ export function helpContent(): Node {
       Het 3D-model past zich aan; overschreven gebouwen krijgen een <span style="color:#ff8f00;font-weight:600">oranje rand</span>.
       Ook boomhoogte, kroonstraal en onderkant kroon en de hoogte van palen en borden zijn aan te passen.</li>
   </ul>
+  <h3>Ontwerpmodel (IFC)</h3>
+  <p>Het nieuwe pand van de architect staat onder <b>Ontwerp (IFC)</b>: in 3D (per onderdeel aan/uit, of transparant)
+  en als paarse buitencontour op het maaiveld. Klik op het pand voor peil, bouwlagen en hoogtes in m NAP.
+  De plaatsing (RD-positie van het IFC-nulpunt, rotatie en peil 0 P) is automatisch bepaald door de contour uit te
+  lijnen op het bestaande pand; vul bij voorkeur de waarden uit de tekening in. Een nieuw model inlezen:
+  <code>npm run ifc -- "model.ifc"</code>.</p>
   <h3>Lagen</h3>
   <p>Links zet je lagen aan of uit: luchtfoto, BGT-vlakken per functie (rijbaan, voetpad, parkeervak, …), reliëf,
   hoogtekleuren, gebouwen (de sporthal normaal / transparant / verborgen), perceelgrenzen, bomen en obstakels.</p>

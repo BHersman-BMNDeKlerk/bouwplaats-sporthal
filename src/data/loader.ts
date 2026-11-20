@@ -1,7 +1,8 @@
 /** Laden van de verwerkte data (map data/ naast de app) in de browser. */
+import { designSource } from './design';
 import type { Grid } from './terrain';
 import type {
-  BgtCollectionFile, BuildingsFile, Manifest, OrthoIndex, TerrainHeader, TreesFile,
+  BgtCollectionFile, BuildingsFile, DesignModelFile, Manifest, OrthoIndex, TerrainHeader, TreesFile,
 } from './types';
 
 export const DATA_BASE = 'data/';
@@ -15,6 +16,7 @@ export interface LoadedData {
   percelen: GeoJSON | null;
   grenzen: GeoJSON | null;
   trees: TreesFile | null;
+  design: { model: DesignModelFile; bin: ArrayBuffer } | null;
 }
 
 export interface GeoJSON {
@@ -55,7 +57,7 @@ export async function loadAll(progress: (msg: string) => void): Promise<LoadedDa
   }
   const f = manifest.bestanden;
   const out: LoadedData = {
-    manifest, terrain: null, ortho: null, buildings: null, bgt: new Map(), percelen: null, grenzen: null, trees: null,
+    manifest, terrain: null, ortho: null, buildings: null, bgt: new Map(), percelen: null, grenzen: null, trees: null, design: null,
   };
   const tasks: Promise<void>[] = [];
   if (f.terrein)
@@ -78,6 +80,14 @@ export async function loadAll(progress: (msg: string) => void): Promise<LoadedDa
   if (f.percelen) tasks.push(json<GeoJSON>(f.percelen).then((d) => { out.percelen = d; }));
   if (f.perceelgrenzen) tasks.push(json<GeoJSON>(f.perceelgrenzen).then((d) => { out.grenzen = d; }));
   if (f.bomen) tasks.push(json<TreesFile>(f.bomen).then((d) => { out.trees = d; }));
+  // Ontwerpmodel (IFC): lokaal geïmporteerd met `npm run ifc`, staat los van het manifest en niet in git.
+  tasks.push((async () => {
+    let model: DesignModelFile;
+    try { model = await json<DesignModelFile>('ontwerp/model.json'); } catch { return; }
+    progress('Ontwerpmodel (IFC) laden…');
+    out.design = { model, bin: await bin(model.bin) };
+    manifest.bronnen = [...manifest.bronnen.filter((b) => b.id !== 'ontwerp'), designSource(model)];
+  })());
   const res = await Promise.allSettled(tasks);
   const errs = res.filter((r) => r.status === 'rejected') as PromiseRejectedResult[];
   if (errs.length) console.warn('Niet alle data kon geladen worden', errs.map((e) => e.reason));

@@ -157,3 +157,24 @@ export interface BgtCollectionFile {
   collectie: string;
   features: BgtFeature[];
 }
+
+/** Geïmporteerd ontwerpmodel (IFC), zie scripts/import-ifc.ts. Coördinaten in het IFC-stelsel (m, Z omhoog). */
+export interface DesignModelFile {
+  bestand: string;
+  datum: string;
+  auteur: string;
+  schema: string;
+  applicatie: string;
+  project: string;
+  geimporteerd: string;
+  bouwlagen: { naam: string; hoogte: number }[];
+  zmin: number;
+  zmax: number;
+  categorieen: { id: string; objecten: number; posOffset: number; posCount: number; idxOffset: number; idxCount: number }[];
+  /** Buitencontour (projectie van boven), IFC x/y in m. */
+  contour: number[][][];
+  plaatsingAuto: { x: number; y: number; rotatie: number; peil: number };
+  plaatsingMethode: string;
+  plaatsingKwaliteit: { gemAfwijking: number; dekking: number } | null;
+  bin: string;
+}

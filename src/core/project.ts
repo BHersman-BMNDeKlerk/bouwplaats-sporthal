@@ -4,6 +4,7 @@
  * Inclusief undo/redo op basis van snapshots.
  */
 import type { HeightOverride } from '../data/heights';
+import type { Placement } from '../data/ifcGeom';
 
 export interface TreeOverride {
   hoogte?: number;
@@ -29,6 +30,8 @@ export interface ProjectData {
     bomen: Record<string, TreeOverride>;
     obstakels: Record<string, ObstacleOverride>;
   };
+  /** Plaatsing van het ontwerpmodel (IFC) in RD/NAP; leeg = automatische plaatsing. */
+  ontwerpPlaatsing?: Placement;
   /** Laagzichtbaarheid en camera (geen onderdeel van undo). */
   weergave?: { lagen?: Record<string, boolean | number | string>; camera?: number[] };
   /** Gereserveerd voor latere fases. */
@@ -65,6 +68,7 @@ export function parseProject(text: string): ProjectData {
   p.overschrijvingen.bomen = d.overschrijvingen?.bomen ?? {};
   p.overschrijvingen.obstakels = d.overschrijvingen?.obstakels ?? {};
   p.weergave = d.weergave;
+  if (d.ontwerpPlaatsing && ['x', 'y', 'rotatie', 'peil'].every((k) => Number.isFinite(d.ontwerpPlaatsing[k]))) p.ontwerpPlaatsing = d.ontwerpPlaatsing;
   p.elementen = d.elementen ?? [];
   p.routes = d.routes ?? [];
   p.kranen = d.kranen ?? [];

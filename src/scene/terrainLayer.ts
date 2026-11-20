@@ -75,6 +75,8 @@ export class TerrainLayer {
   readonly parcels: Parcel[] = [];
   readonly parcelLines: number[][][] = [];
   hypsoRange = { min: 0, max: 1 };
+  /** Buitencontour van het ontwerpmodel in RD (of null). */
+  designContour: number[][][] | null = null;
   private hillCanvas: HTMLCanvasElement | null = null;
   private hypsoCanvas: HTMLCanvasElement | null = null;
 
@@ -366,6 +368,17 @@ export class TerrainLayer {
       ctx.setLineDash([1.5 * ppm, 0.8 * ppm]);
       ctx.stroke();
       ctx.setLineDash([]);
+    }
+
+    if (L.ontwerpContour && this.designContour) {
+      ctx.beginPath();
+      for (const r of this.designContour) ring(r);
+      ctx.strokeStyle = '#ffffffcc';
+      ctx.lineWidth = Math.max(4, 0.55 * ppm);
+      ctx.stroke();
+      ctx.strokeStyle = '#7b1fa2';
+      ctx.lineWidth = Math.max(2, 0.28 * ppm);
+      ctx.stroke();
     }
 
     if (L.percelen) {
